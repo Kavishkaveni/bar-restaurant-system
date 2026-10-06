@@ -11,25 +11,31 @@ from app.models.inventory import (
     Supplier,
 )
 from app.models.pos import DiningTable, Order, OrderLine, Payment, SellOption
+from app.models.rooms import Booking, BookingCharge, BookingPayment, Room, RoomType
 from app.models.setting import Setting
 from app.models.user import Role, RolePermission, User
 
 __all__ = [
     "AuditLog",
     "Base",
+    "Booking",
+    "BookingCharge",
+    "BookingPayment",
     "Category",
     "DiningTable",
     "Item",
     "OpenBottle",
-    "RecipeLine",
     "Order",
     "OrderLine",
     "Payment",
-    "SellOption",
     "Purchase",
     "PurchaseLine",
+    "RecipeLine",
     "Role",
     "RolePermission",
+    "Room",
+    "RoomType",
+    "SellOption",
     "Setting",
     "StockMovement",
     "Supplier",

@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from app.api import (
     audit_log,
     auth,
+    bookings,
     bottles,
     catalogue,
     kitchen,
@@ -15,6 +16,7 @@ from app.api import (
     purchases,
     recipes,
     roles,
+    rooms,
     settings,
     stock,
     suppliers,
@@ -68,6 +70,8 @@ api.include_router(orders.router)
 api.include_router(recipes.router)
 api.include_router(bottles.router)
 api.include_router(kitchen.router)
+api.include_router(rooms.router)
+api.include_router(bookings.router)
 
 
 @api.get("/health", tags=["health"])

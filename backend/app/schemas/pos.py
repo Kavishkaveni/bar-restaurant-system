@@ -7,8 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.schemas.inventory import Num
 from app.services.pins import Approval
 
-OrderType = Literal["table", "bar", "takeaway", "tab"]
-PaymentMethod = Literal["cash", "card", "bank_transfer", "qr"]
+OrderType = Literal["table", "bar", "takeaway", "tab", "room"]
+PaymentMethod = Literal["cash", "card", "bank_transfer", "qr", "room"]
 
 
 # ---- Tables ---------------------------------------------------------------------
@@ -99,6 +99,7 @@ class Menu(BaseModel):
 class OrderCreate(BaseModel):
     type: OrderType
     table_id: int | None = None
+    booking_id: int | None = None  # room service: the guest's stay
     customer_name: str = Field(default="", max_length=80)
     note: str = Field(default="", max_length=300)
 
@@ -156,6 +157,7 @@ class PaymentIn(BaseModel):
     tendered: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
     tip: Decimal = Field(default=Decimal(0), ge=0, max_digits=12, decimal_places=2)
     reference: str = Field(default="", max_length=80)
+    booking_id: int | None = None  # method "room": which stay to charge
 
 
 class VoidIn(BaseModel):
@@ -202,6 +204,7 @@ class PaymentOut(BaseModel):
     change: Num
     tip: Num
     reference: str
+    booking_id: int | None
     user: UserBrief | None
     created_at: datetime
 
@@ -211,6 +214,7 @@ class OrderOut(BaseModel):
     type: OrderType
     label: str
     table: TableBrief | None
+    booking_id: int | None
     customer_name: str
     note: str
     status: str

@@ -8,7 +8,13 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import DB, require
 from app.models import Item, Purchase, PurchaseLine, Supplier, User
-from app.schemas.inventory import CancelIn, PaymentIn, PurchaseIn, PurchaseOut, PurchasePage
+from app.schemas.inventory import (
+    CancelIn,
+    PaymentIn,
+    PurchaseIn,
+    PurchaseOut,
+    PurchasePage,
+)
 from app.services import audit, stock
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])

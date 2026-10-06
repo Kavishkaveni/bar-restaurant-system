@@ -11,7 +11,7 @@ from app.models import Item, Order, StockMovement, User
 from app.services import bottles, recipes, stock
 
 CENT = Decimal("0.01")
-ZERO = Decimal("0")
+ZERO = Decimal(0)
 
 
 def money(v: Decimal) -> Decimal:

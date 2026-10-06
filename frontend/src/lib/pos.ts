@@ -5,6 +5,7 @@ export const METHOD_LABEL: Record<PaymentMethod, string> = {
   card: "Card",
   bank_transfer: "Bank transfer",
   qr: "QR",
+  room: "Charge to room",
 };
 
 export function minutesSince(iso: string): string {

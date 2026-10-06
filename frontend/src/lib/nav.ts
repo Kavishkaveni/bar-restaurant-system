@@ -41,7 +41,7 @@ export const NAV: NavItem[] = [
     href: "/pos",
     label: "POS",
     icon: ShoppingCart,
-    anyOf: ["pos.order", "pos.room_service"],
+    anyOf: ["pos.order", "pos.payment", "pos.room_service"],
     group: "Service",
     blurb: "Take orders, print bills and take payments.",
   },
@@ -59,7 +59,6 @@ export const NAV: NavItem[] = [
     icon: BedDouble,
     anyOf: ["rooms.manage"],
     group: "Service",
-    phase: 5,
     blurb: "Bookings, check-in, check-out and room bills.",
   },
   {

@@ -70,4 +70,8 @@ DEFAULT_SETTINGS: dict[str, object] = {
     "receipt_footer": "Thank you! Please come again.",
     # Gas, electricity etc. added on top of ingredient cost when showing dish margins.
     "overhead_percent": 0,
+    # Rooms
+    "check_in_time": "14:00",
+    "check_out_time": "12:00",
+    "room_tax_percent": 0,
 }

@@ -8,11 +8,21 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import DB, require, require_any
+from app.api.deps import DB, require_any
 from app.api.pos import POS_USERS
 from app.api.settings import load_settings
 from app.core.timeutil import business_tz
-from app.models import DiningTable, Item, Order, OrderLine, Payment, SellOption, User
+from app.models import (
+    Booking,
+    BookingCharge,
+    DiningTable,
+    Item,
+    Order,
+    OrderLine,
+    Payment,
+    SellOption,
+    User,
+)
 from app.schemas.pos import (
     BillsPage,
     DiscountIn,
@@ -29,12 +39,13 @@ from app.schemas.pos import (
     VoidIn,
 )
 from app.services import audit, billing
-from app.services.pins import Approval, authorize
+from app.services.pins import Approval, authorize, has_permission
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
-Waiter = Annotated[User, Depends(require("pos.order"))]
-Cashier = Annotated[User, Depends(require("pos.payment"))]
+# Waiters take any order; reception staff with only "room service" take room orders.
+Waiter = Annotated[User, Depends(require_any("pos.order", "pos.room_service"))]
+Cashier = Annotated[User, Depends(require_any("pos.payment", "pos.room_service"))]
 PosUser = Annotated[User, Depends(require_any(*POS_USERS))]
 
 APPROVE = "pos.discount_void"
@@ -44,6 +55,8 @@ ZERO = Decimal(0)
 # ---- Helpers ----------------------------------------------------------------------
 
 def label(order: Order) -> str:
+    if order.type == "room" and order.booking:
+        return f"Room {order.booking.room.number} · {order.booking.guest_name}"
     if order.type == "table" and order.table:
         return order.table.name
     if order.type == "tab":
@@ -59,6 +72,7 @@ def to_out(order: Order) -> OrderOut:
         type=order.type,
         label=label(order),
         table=order.table,
+        booking_id=order.booking_id,
         customer_name=order.customer_name,
         note=order.note,
         status=order.status,
@@ -94,6 +108,7 @@ def _query():
         selectinload(Order.lines).selectinload(OrderLine.item),
         selectinload(Order.payments).selectinload(Payment.user),
         selectinload(Order.table),
+        selectinload(Order.booking).selectinload(Booking.room),
         selectinload(Order.opener),
         selectinload(Order.closer),
     )
@@ -114,6 +129,12 @@ def ensure_open(order: Order) -> None:
     if order.status != "open":
         word = {"paid": "already paid", "void": "voided", "merged": f"merged into bill #{order.merged_into}"}
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"This bill is {word.get(order.status, order.status)}")
+
+
+def check_taker(actor: User, order_type: str) -> None:
+    """Room service staff can only work on room orders."""
+    if order_type != "room" and not has_permission(actor, "pos.order"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only take room service orders")
 
 
 async def respond(db: DB, order_id: int) -> OrderOut:
@@ -143,7 +164,7 @@ def ensure_not_below_paid(order: Order) -> None:
 
 async def _rates(db: DB, order_type: str) -> tuple[Decimal, Decimal]:
     s = await load_settings(db)
-    service = Decimal(str(s["service_charge_percent"])) if order_type in ("table", "tab") else ZERO
+    service = Decimal(str(s["service_charge_percent"])) if order_type in ("table", "tab", "room") else ZERO
     return service, Decimal(str(s["tax_percent"]))
 
 
@@ -218,6 +239,13 @@ async def bills(
 
 @router.post("", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
 async def create_order(body: OrderCreate, actor: Waiter, db: DB, request: Request):
+    check_taker(actor, body.type)
+    if body.type == "room":
+        stay = await db.get(Booking, body.booking_id) if body.booking_id else None
+        if not stay or stay.status != "checked_in":
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose a room with a guest checked in")
+    elif body.booking_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Only room service orders have a room")
     if body.type == "table":
         if not body.table_id:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose a table")
@@ -231,6 +259,7 @@ async def create_order(body: OrderCreate, actor: Waiter, db: DB, request: Reques
     order = Order(
         type=body.type,
         table_id=body.table_id,
+        booking_id=body.booking_id if body.type == "room" else None,
         customer_name=body.customer_name.strip(),
         note=body.note,
         service_charge_percent=service,
@@ -254,6 +283,7 @@ async def get_order(order_id: int, _: Annotated[User, Depends(require_any(*POS_U
 async def update_order(order_id: int, body: OrderUpdate, actor: Waiter, db: DB, request: Request):
     order = await load(db, order_id, lock=True)
     ensure_open(order)
+    check_taker(actor, order.type)
     changes: dict = {}
 
     if body.table_id is not None and body.table_id != order.table_id:
@@ -261,6 +291,7 @@ async def update_order(order_id: int, body: OrderUpdate, actor: Waiter, db: DB, 
         changes["table"] = f"{order.table.name if order.table else label(order)} → {table.name}"
         order.table_id = table.id
         order.type = "table"
+        order.booking_id = None
     if body.customer_name is not None:
         if order.type == "tab" and not body.customer_name.strip():
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "A tab needs a name")
@@ -290,6 +321,7 @@ async def delete_empty_order(order_id: int, actor: Waiter, db: DB, request: Requ
     """Throw away a bill opened by mistake. Bills with items must be voided."""
     order = await load(db, order_id, lock=True)
     ensure_open(order)
+    check_taker(actor, order.type)
     if order.lines or order.payments:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "This bill has items. Remove them or void the bill.")
     audit.record(db, user=actor, action="delete", entity="order", entity_id=order.id,
@@ -304,6 +336,7 @@ async def delete_empty_order(order_id: int, actor: Waiter, db: DB, request: Requ
 async def add_line(order_id: int, body: LineAdd, actor: Waiter, db: DB):
     order = await load(db, order_id, lock=True)
     ensure_open(order)
+    check_taker(actor, order.type)
     item = await db.get(Item, body.item_id)
     if not item or not item.is_active:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Item not found")
@@ -353,6 +386,7 @@ def _line(order: Order, line_id: int) -> OrderLine:
 async def update_line(order_id: int, line_id: int, body: LineUpdate, actor: Waiter, db: DB, request: Request):
     order = await load(db, order_id, lock=True)
     ensure_open(order)
+    check_taker(actor, order.type)
     line = _line(order, line_id)
     if body.qty < line.qty:
         approver = await guard_reduction(db, order, actor, body.approval, request, line)
@@ -372,6 +406,7 @@ async def update_line(order_id: int, line_id: int, body: LineUpdate, actor: Wait
 async def remove_line(order_id: int, line_id: int, body: LineRemove, actor: Waiter, db: DB, request: Request):
     order = await load(db, order_id, lock=True)
     ensure_open(order)
+    check_taker(actor, order.type)
     line = _line(order, line_id)
     approver = await guard_reduction(db, order, actor, body.approval, request, line)
     audit.record(db, user=actor, action="remove_line", entity="order", entity_id=order.id,
@@ -391,6 +426,7 @@ async def remove_line(order_id: int, line_id: int, body: LineRemove, actor: Wait
 async def set_discount(order_id: int, body: DiscountIn, actor: Waiter, db: DB, request: Request):
     order = await load(db, order_id, lock=True)
     ensure_open(order)
+    check_taker(actor, order.type)
     if body.type == "percent" and body.value > 100:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "A discount can't be more than 100%")
     approver = await authorize(db, actor, APPROVE, body.approval, request)
@@ -410,6 +446,7 @@ async def set_discount(order_id: int, body: DiscountIn, actor: Waiter, db: DB, r
 async def remove_discount(order_id: int, actor: Waiter, db: DB, request: Request):
     order = await load(db, order_id, lock=True)
     ensure_open(order)
+    check_taker(actor, order.type)
     if order.discount_type:
         audit.record(db, user=actor, action="remove_discount", entity="order", entity_id=order.id,
                      before={"name": f"#{order.id}", "discount": float(order.discount_value)}, request=request)
@@ -448,6 +485,7 @@ async def split(order_id: int, body: SplitIn, actor: Waiter, db: DB, request: Re
     Returns the new bill."""
     order = await load(db, order_id, lock=True)
     ensure_open(order)
+    check_taker(actor, order.type)
     if order.payments:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "This bill already has a payment, so it can't be split.")
 
@@ -498,6 +536,8 @@ async def merge(order_id: int, body: MergeIn, actor: Waiter, db: DB, request: Re
     target, source = (a, b) if a.id == order_id else (b, a)
     ensure_open(target)
     ensure_open(source)
+    check_taker(actor, target.type)
+    check_taker(actor, source.type)
     for line in list(source.lines):
         line.order = target
     for payment in list(source.payments):
@@ -525,6 +565,10 @@ async def pay(order_id: int, body: PaymentIn, actor: Cashier, db: DB, request: R
     t = billing.totals(order)
     if body.amount > t.due:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Only {t.due:,.2f} is due on this bill")
+    if body.method == "room":
+        return await charge_to_room(db, order, body, actor, request)
+    if not has_permission(actor, "pos.payment"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You can charge this to the room, but not take money")
 
     change = ZERO
     tendered = None
@@ -546,11 +590,42 @@ async def pay(order_id: int, body: PaymentIn, actor: Cashier, db: DB, request: R
     return await respond(db, order.id)
 
 
+async def charge_to_room(db: DB, order: Order, body: PaymentIn, actor: User, request: Request) -> OrderOut:
+    """Move the whole bill onto a staying guest's room bill. The order closes
+    (stock goes out now) and the guest pays at check-out."""
+    t = billing.totals(order)
+    if body.amount != t.due:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Charge the full {t.due:,.2f} to the room")
+    if body.tip:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tips can't be charged to a room")
+    booking_id = body.booking_id or order.booking_id
+    stay = await db.get(Booking, booking_id, with_for_update=True) if booking_id else None
+    if not stay or stay.status != "checked_in":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose a room with a guest checked in")
+    room_no = stay.room.number
+    order.payments.append(
+        Payment(method="room", amount=body.amount, reference=f"Room {room_no}", booking_id=stay.id,
+                created_by=actor.id)
+    )
+    stay.charges.append(
+        BookingCharge(kind="room_service", description=f"Room service bill #{order.id}" if order.type == "room" else f"{label(order)} bill #{order.id}", amount=body.amount,
+                      order_id=order.id, created_by=actor.id)
+    )
+    await db.flush()
+    await billing.close(db, order, actor)
+    audit.record(db, user=actor, action="charge_room", entity="order", entity_id=order.id,
+                 after={"name": label(order), "room": room_no, "guest": stay.guest_name,
+                        "total": float(order.total)}, request=request)
+    await db.commit()
+    return await respond(db, order.id)
+
+
 @router.post("/{order_id}/complete", response_model=OrderOut)
 async def complete_free_bill(order_id: int, actor: Cashier, db: DB, request: Request):
     """Close a bill with nothing to pay (fully discounted) so its stock is recorded."""
     order = await load(db, order_id, lock=True)
     ensure_open(order)
+    check_taker(actor, order.type)
     if not order.lines:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "There's nothing on this bill yet")
     if billing.totals(order).due > 0:
@@ -571,6 +646,15 @@ async def void(order_id: int, body: VoidIn, actor: PosUser, db: DB, request: Req
         ensure_open(order)
     approver = await authorize(db, actor, APPROVE, body.approval, request)
     was_paid = order.status == "paid"
+    room_charge = await db.scalar(select(BookingCharge).where(BookingCharge.order_id == order.id))
+    if room_charge:
+        stay = await db.get(Booking, room_charge.booking_id, with_for_update=True)
+        if stay.status != "checked_in":
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"This bill was settled when Room {stay.room.number} checked out. Refund the guest instead.",
+            )
+        await db.delete(room_charge)
     if was_paid:
         await billing.reverse_stock(db, order, approver, body.reason)
     t = billing.totals(order)

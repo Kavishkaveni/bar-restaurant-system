@@ -8,18 +8,29 @@ payment, and put back if a manager voids the bill.
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
 from app.models.inventory import MONEY, QTY, Item
+from app.models.rooms import Booking
 from app.models.user import User
 
 PERCENT = Numeric(5, 2)
 
-ORDER_TYPES = ("table", "bar", "takeaway", "tab")
+ORDER_TYPES = ("table", "bar", "takeaway", "tab", "room")
 ORDER_STATUSES = ("open", "paid", "void", "merged")
-PAYMENT_METHODS = ("cash", "card", "bank_transfer", "qr")
+PAYMENT_METHODS = ("cash", "card", "bank_transfer", "qr", "room")
 
 
 class DiningTable(Base, TimestampMixin):
@@ -59,6 +70,8 @@ class Order(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     type: Mapped[str] = mapped_column(String(20))
     table_id: Mapped[int | None] = mapped_column(ForeignKey("dining_tables.id"))
+    # Room service: the stay this order belongs to.
+    booking_id: Mapped[int | None] = mapped_column(ForeignKey("bookings.id"), index=True)
     customer_name: Mapped[str] = mapped_column(String(80), default="")
     note: Mapped[str] = mapped_column(String(300), default="")
     status: Mapped[str] = mapped_column(String(20), default="open")
@@ -91,6 +104,7 @@ class Order(Base, TimestampMixin):
     merged_into: Mapped[int | None] = mapped_column(ForeignKey("orders.id"))
 
     table: Mapped[DiningTable | None] = relationship(lazy="selectin")
+    booking: Mapped["Booking | None"] = relationship(lazy="selectin")
     opener: Mapped[User | None] = relationship(foreign_keys=[opened_by], lazy="selectin")
     closer: Mapped[User | None] = relationship(foreign_keys=[closed_by], lazy="selectin")
     lines: Mapped[list["OrderLine"]] = relationship(
@@ -158,6 +172,8 @@ class Payment(Base):
     change: Mapped[Decimal] = mapped_column(MONEY, default=0)
     tip: Mapped[Decimal] = mapped_column(MONEY, default=0)
     reference: Mapped[str] = mapped_column(String(80), default="")
+    # Charge to room: the stay whose bill this amount was moved to.
+    booking_id: Mapped[int | None] = mapped_column(ForeignKey("bookings.id"))
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

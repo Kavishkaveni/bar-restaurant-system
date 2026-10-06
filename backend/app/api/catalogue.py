@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, or_, select
 
 from app.api.deps import DB, STOCK_VIEWERS, require, require_any

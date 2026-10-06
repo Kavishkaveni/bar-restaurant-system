@@ -4,11 +4,32 @@ One responsive website that runs a single-outlet bar, restaurant and rooms
 business: billing, liquor and food stock, rooms, purchasing, expenses, reports
 and AI. Staff use it on a counter PC or tablet; the owner uses it on a phone.
 
-Phases 1 to 4 of 8 are done: the foundation (login, staff, roles, settings,
-audit log, layout), inventory and purchasing, the POS, and the bar and kitchen
-side (pegs from open bottles, recipes, kitchen screen).
+Phases 1 to 5 of 8 are done: the foundation (login, staff, roles, settings,
+audit log, layout), inventory and purchasing, the POS, the bar and kitchen
+side (pegs from open bottles, recipes, kitchen screen), and rooms.
 
 ## What works now
+
+### Rooms (phase 5)
+
+- **Rooms and prices**: room types (Standard AC, Deluxe…) each with a price per
+  night and an optional short-stay price (e.g. 3 hours, then per extra hour).
+- **Room board**: every room at a glance: free, occupied, arriving today, or
+  past check-out time, plus housekeeping (clean, needs cleaning, maintenance).
+- **Bookings and walk-ins**: only free rooms can be chosen for the dates; an
+  advance can be taken when booking. Check-in records name, phone, NIC or
+  passport, guests, address and vehicle number.
+- **Room bill**: room charge, extras (laundry, extra bed), discounts (manager),
+  room tax (Settings), room service, payments. Change dates, extend, or move
+  the guest to another room.
+- **Room service**: "Room service" on the POS opens an order for a staying
+  guest; "Charge to room" moves any bill to the guest's room bill. Stock goes
+  out at once; the guest pays at check-out. Voiding the bill takes it off.
+- **Check-out**: nights are counted by date (hours for a short stay); charging
+  fewer needs a manager. Takes the balance or gives back extra advance, prints
+  the room bill, and marks the room for cleaning.
+- **Cancel / no-show**: the advance is refunded or kept as a cancellation charge.
+- Receptionists see only room service on the POS.
 
 ### Bar pegs, recipes and kitchen (phase 4)
 
@@ -141,7 +162,7 @@ docker compose exec api pytest        # with Docker
 cd backend && pytest                  # without Docker
 ```
 
-71 tests cover login, PIN lockout, token refresh, password change, permission
+104 tests cover login, PIN lockout, token refresh, password change, permission
 checks, the last-owner rule, settings, the audit log, items, purchases, average
 cost, cancelling purchases, opening stock, wastage, counts, bill totals,
 payments, stock deduction, voids, manager approvals, split and merge. Tests only ever run
@@ -201,7 +222,7 @@ docker-compose.yml
 | 2 | Items, suppliers, purchases, stock ledger | Done |
 | 3 | POS and billing (go live for bar and sundries) | Done |
 | 4 | Bar pegs, open bottles, recipes, kitchen screen | Done |
-| 5 | Rooms, bookings, room bills, housekeeping | Next |
-| 6 | Expenses, shifts, reports | |
+| 5 | Rooms, bookings, room bills, housekeeping | Done |
+| 6 | Expenses, shifts, reports | Next |
 | 7 | Admin dashboard with live charts | |
 | 8 | AI features, backups, deployment | |

@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Item, StockMovement, User
 
-ZERO = Decimal("0")
+ZERO = Decimal(0)
 
 
 async def on_hand(db: AsyncSession, item_ids: Iterable[int]) -> dict[int, Decimal]:

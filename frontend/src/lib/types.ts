@@ -36,6 +36,9 @@ export type BusinessSettings = {
   service_charge_percent: number;
   receipt_footer: string;
   overhead_percent: number;
+  check_in_time: string;
+  check_out_time: string;
+  room_tax_percent: number;
 };
 
 export type AuditEntry = {
@@ -157,8 +160,8 @@ export type Purchase = {
 
 // ---- Phase 3: POS -------------------------------------------------------------
 
-export type OrderType = "table" | "bar" | "takeaway" | "tab";
-export type PaymentMethod = "cash" | "card" | "bank_transfer" | "qr";
+export type OrderType = "table" | "bar" | "takeaway" | "tab" | "room";
+export type PaymentMethod = "cash" | "card" | "bank_transfer" | "qr" | "room";
 
 export type OpenOrderBrief = {
   id: number;
@@ -225,6 +228,7 @@ export type OrderPayment = {
   change: number;
   tip: number;
   reference: string;
+  booking_id: number | null;
   user: { id: number; name: string } | null;
   created_at: string;
 };
@@ -234,6 +238,7 @@ export type Order = {
   type: OrderType;
   label: string;
   table: { id: number; name: string } | null;
+  booking_id: number | null;
   customer_name: string;
   note: string;
   status: "open" | "paid" | "void" | "merged";
@@ -346,3 +351,118 @@ export type Ticket = {
   lines: TicketLine[];
   oldest: string;
 };
+
+// ---- Phase 5: rooms ---------------------------------------------------------------
+
+export type Housekeeping = "clean" | "dirty" | "maintenance";
+export type BookingStatus = "booked" | "checked_in" | "checked_out" | "cancelled" | "no_show";
+export type StayType = "night" | "short";
+export type IdType = "nic" | "passport" | "driving_licence" | "other";
+export type FolioMethod = "cash" | "card" | "bank_transfer" | "qr";
+
+export type RoomType = {
+  id: number;
+  name: string;
+  nightly_rate: number;
+  short_stay_rate: number | null;
+  short_stay_hours: number;
+  extra_hour_rate: number | null;
+  max_guests: number;
+  description: string;
+  sort_order: number;
+  room_count: number;
+};
+
+export type Room = {
+  id: number;
+  number: string;
+  room_type: { id: number; name: string };
+  floor: string;
+  housekeeping: Housekeeping;
+  note: string;
+  sort_order: number;
+};
+
+export type BookingBrief = {
+  id: number;
+  room: { id: number; number: string; room_type: { id: number; name: string } };
+  status: BookingStatus;
+  stay_type: StayType;
+  guest_name: string;
+  phone: string;
+  arrival: string;
+  departure: string;
+  checked_in_at: string | null;
+  checked_out_at: string | null;
+  total: number;
+  balance: number;
+};
+
+export type Folio = {
+  units: number;
+  unit_label: "night" | "hour";
+  room_charge: number;
+  extras: number;
+  discounts: number;
+  room_service: number;
+  tax_percent: number;
+  tax: number;
+  total: number;
+  paid: number;
+  balance: number;
+  estimated: boolean;
+};
+
+export type BookingCharge = {
+  id: number;
+  kind: "room_service" | "extra" | "discount";
+  description: string;
+  amount: number;
+  order_id: number | null;
+  user: { id: number; name: string } | null;
+  created_at: string;
+};
+
+export type FolioPayment = {
+  id: number;
+  kind: "payment" | "refund";
+  method: FolioMethod;
+  amount: number;
+  reference: string;
+  user: { id: number; name: string } | null;
+  created_at: string;
+};
+
+export type Booking = Omit<BookingBrief, "total" | "balance"> & {
+  id_type: IdType;
+  id_number: string;
+  address: string;
+  adults: number;
+  children: number;
+  vehicle_no: string;
+  note: string;
+  rate: number;
+  extra_hour_rate: number;
+  block_hours: number;
+  cancel_reason: string;
+  creator: { id: number; name: string } | null;
+  created_at: string;
+  folio: Folio;
+  charges: BookingCharge[];
+  payments: FolioPayment[];
+  open_bills: { id: number; total: number }[];
+};
+
+export type BoardRoom = {
+  id: number;
+  number: string;
+  floor: string;
+  room_type: { id: number; name: string };
+  housekeeping: Housekeeping;
+  note: string;
+  state: "free" | "occupied" | "arriving" | "overdue";
+  stay: BookingBrief | null;
+  next: BookingBrief | null;
+};
+
+export type Board = { rooms: BoardRoom[]; arrivals_today: number; departures_today: number; in_house: number };

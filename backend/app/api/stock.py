@@ -7,7 +7,14 @@ from sqlalchemy import func, select
 from app.api.catalogue import with_stock
 from app.api.deps import DB, STOCK_VIEWERS, require, require_any
 from app.models import Item, StockMovement, User
-from app.schemas.inventory import CountIn, ItemOut, MovementOut, MovementPage, OpeningStockIn, WastageIn
+from app.schemas.inventory import (
+    CountIn,
+    ItemOut,
+    MovementOut,
+    MovementPage,
+    OpeningStockIn,
+    WastageIn,
+)
 from app.services import audit, stock
 
 router = APIRouter(prefix="/items/{item_id}", tags=["stock"])

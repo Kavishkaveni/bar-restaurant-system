@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -23,6 +23,9 @@ class BusinessSettings(BaseModel):
     service_charge_percent: float = Field(default=0, ge=0, le=100)
     receipt_footer: str = Field(default="", max_length=300)
     overhead_percent: float = Field(default=0, ge=0, le=100)
+    check_in_time: str = Field(default="14:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    check_out_time: str = Field(default="12:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    room_tax_percent: float = Field(default=0, ge=0, le=100)
 
 
 async def load_settings(db: DB) -> dict[str, Any]:

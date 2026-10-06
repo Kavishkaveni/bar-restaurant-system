@@ -48,6 +48,13 @@ const ACTION_WORDS: Record<string, string> = {
   produce: "made a batch of",
   open_bottle: "opened a bottle of",
   finish_bottle: "emptied a bottle of",
+  check_in: "checked in",
+  check_out: "checked out",
+  add_charge: "added a charge to",
+  remove_charge: "removed a charge from",
+  charge_room: "charged to the room:",
+  housekeeping: "changed housekeeping of",
+  no_show: "marked as no-show",
 };
 
 const ENTITY_WORDS: Record<string, string> = {
@@ -61,6 +68,9 @@ const ENTITY_WORDS: Record<string, string> = {
   order: "bill",
   table: "table",
   sell_option: "selling option",
+  booking: "booking",
+  room: "",
+  room_type: "room type",
 };
 
 // Stock actions read better without the word "item": "counted Arrack".
@@ -72,6 +82,11 @@ const NO_ENTITY_WORD = [
   "produce",
   "open_bottle",
   "finish_bottle",
+  "check_in",
+  "check_out",
+  "no_show",
+  "housekeeping",
+  "charge_room",
 ];
 
 function describe(e: AuditEntry): string {
@@ -86,7 +101,8 @@ function describe(e: AuditEntry): string {
     (e.before?.name as string) ??
     `#${e.entity_id}`;
   if (NO_ENTITY_WORD.includes(e.action)) return `${verb} ${name}`;
-  return `${verb} ${ENTITY_WORDS[e.entity] ?? e.entity} ${name}`;
+  const word = ENTITY_WORDS[e.entity] ?? e.entity;
+  return word ? `${verb} ${word} ${name}` : `${verb} ${name}`;
 }
 
 function Changes({ e }: { e: AuditEntry }) {

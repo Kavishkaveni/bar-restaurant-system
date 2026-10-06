@@ -184,6 +184,51 @@ function Settings() {
             </Field>
           </div>
 
+          <div className="grid gap-4 p-5 sm:grid-cols-3">
+            <h2 className="font-semibold sm:col-span-3">Rooms</h2>
+            <Field label="Check-in time">
+              {(id) => (
+                <Input
+                  id={id}
+                  type="time"
+                  value={form.check_in_time}
+                  onChange={(e) => set("check_in_time", e.target.value)}
+                  required
+                />
+              )}
+            </Field>
+            <Field label="Check-out time">
+              {(id) => (
+                <Input
+                  id={id}
+                  type="time"
+                  value={form.check_out_time}
+                  onChange={(e) => set("check_out_time", e.target.value)}
+                  required
+                />
+              )}
+            </Field>
+            <Field
+              label="Room tax (%)"
+              hint="On room charges and extras. Room service already has its own tax."
+            >
+              {(id) => (
+                <Input
+                  id={id}
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  className="tabular"
+                  value={form.room_tax_percent}
+                  onChange={(e) =>
+                    set("room_tax_percent", Number(e.target.value))
+                  }
+                />
+              )}
+            </Field>
+          </div>
+
           <div className="grid gap-4 p-5">
             <h2 className="font-semibold">Receipt</h2>
             <Field label="Message at the bottom of each receipt">

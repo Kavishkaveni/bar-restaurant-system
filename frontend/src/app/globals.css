@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+/*
+  Palette
+  - bottle:  deep bottle green, the frame of the app (sidebar, PIN pad)
+  - amber:   whisky amber, the single accent for primary actions
+  - ground:  cool light grey page background
+  - ink:     text
+*/
+@theme {
+  --font-sans: "Figtree Variable", system-ui, sans-serif;
+
+  --color-bottle-950: #0f211c;
+  --color-bottle-900: #163029;
+  --color-bottle-800: #1f3f36;
+  --color-bottle-700: #2b5246;
+  --color-bottle-200: #c9d8d2;
+  --color-bottle-100: #e3ece8;
+
+  --color-amber-600: #a86d10;
+  --color-amber-500: #c8891e;
+  --color-amber-400: #dca444;
+  --color-amber-100: #f7ead2;
+
+  --color-ground: #f2f4f3;
+  --color-surface: #ffffff;
+  --color-line: #dde2e0;
+  --color-ink: #1b2320;
+  --color-ink-soft: #5b6662;
+
+  --color-danger: #b42318;
+  --color-danger-soft: #fde8e6;
+  --color-ok: #217a4b;
+  --color-ok-soft: #e1f3e8;
+}
+
+html,
+body {
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Figures line up in tables and money columns. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-amber-500);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

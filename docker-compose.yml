@@ -1,0 +1,60 @@
+# Local development: database, Redis, API and website with live reload.
+#   cp .env.example .env
+#   docker compose up --build
+# Website: http://localhost:3000   API docs: http://localhost:8000/docs
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: barpos
+      POSTGRES_PASSWORD: barpos
+      POSTGRES_DB: barpos
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/create-test-db.sql:/docker-entrypoint-initdb.d/create-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barpos"]
+      interval: 3s
+      retries: 20
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  api:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://barpos:barpos@db:5432/barpos
+      TEST_DATABASE_URL: postgresql+asyncpg://barpos:barpos@db:5432/barpos_test
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/code
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

@@ -15,6 +15,7 @@ os.environ["DATABASE_URL"] = _test_url
 os.environ["JWT_SECRET"] = "test-secret-that-is-long-enough-for-hs256"
 os.environ["OWNER_USERNAME"] = "owner"
 os.environ["OWNER_PASSWORD"] = "OwnerPass123"
+os.environ["LIVE_UPDATES"] = "false"  # tested on their own in test_live.py
 
 import pytest
 from httpx import ASGITransport, AsyncClient

@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     owner_name: str = "Owner"
 
     cors_origins: str = "http://localhost:3000"
+    # Push "something changed" to open screens over WebSocket.
+    live_updates: bool = True
 
     @property
     def cors_origin_list(self) -> list[str]:

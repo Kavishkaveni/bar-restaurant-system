@@ -9,6 +9,7 @@ import { Guard } from "@/components/Guard";
 import { Button, ErrorText, PageHeader, Panel, Spinner } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useLive } from "@/lib/live";
 import { minutesSince, qtyText, timeOf } from "@/lib/pos";
 import { readJSON, writeJSON } from "@/lib/storage";
 import type { KitchenStatus, Ticket, TicketLine } from "@/lib/types";
@@ -50,10 +51,11 @@ function KitchenBoard() {
   const qc = useQueryClient();
   const { can } = useAuth();
   const isCook = can("kitchen.view");
+  const live = useLive();
   const tickets = useQuery({
     queryKey: ["kitchen"],
     queryFn: () => api<Ticket[]>("/kitchen/tickets"),
-    refetchInterval: 5_000,
+    refetchInterval: live ? 30_000 : 5_000, // live updates bring new orders at once
     refetchIntervalInBackground: true,
   });
   const [sound, setSound] = useState(

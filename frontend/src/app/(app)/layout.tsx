@@ -7,6 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { Spinner } from "@/components/ui";
 import { ApprovalProvider } from "@/lib/approval";
 import { useAuth } from "@/lib/auth";
+import { LiveUpdates } from "@/lib/live";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -24,8 +25,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
   return (
-    <ApprovalProvider>
-      <AppShell>{children}</AppShell>
-    </ApprovalProvider>
+    <LiveUpdates>
+      <ApprovalProvider>
+        <AppShell>{children}</AppShell>
+      </ApprovalProvider>
+    </LiveUpdates>
   );
 }

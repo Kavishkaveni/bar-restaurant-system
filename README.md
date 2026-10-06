@@ -4,12 +4,30 @@ One responsive website that runs a single-outlet bar, restaurant and rooms
 business: billing, liquor and food stock, rooms, purchasing, expenses, reports
 and AI. Staff use it on a counter PC or tablet; the owner uses it on a phone.
 
-Phases 1 to 6 of 8 are done: the foundation (login, staff, roles, settings,
+Phases 1 to 7 of 8 are done: the foundation (login, staff, roles, settings,
 audit log, layout), inventory and purchasing, the POS, the bar and kitchen
-side (pegs from open bottles, recipes, kitchen screen), rooms, and expenses,
-the cash drawer and reports.
+side (pegs from open bottles, recipes, kitchen screen), rooms, expenses, the
+cash drawer and reports, and the live dashboard.
 
 ## What works now
+
+### Dashboard, live updates and app install (phase 7)
+
+- **Dashboard**: today's sales (compared with this time yesterday), profit,
+  room income, expenses and cost; sales by hour against yesterday; the last
+  30 days of bills, rooms and profit; rooms occupied, arrivals, departures and
+  rooms to clean; open bills and the kitchen queue; cash in the drawer; items
+  running low; latest bills. Profit figures only for "Dashboard: profit and
+  costs".
+- **Live updates**: when anyone pays a bill, sends food to the kitchen, checks
+  a guest in or out, records an expense or changes stock, every open
+  dashboard, POS, kitchen and room screen refreshes within a second. Changes
+  go through PostgreSQL NOTIFY, so it works with several server processes.
+  Screens still refresh on a timer if the link drops.
+- **Install as an app**: on a phone or tablet, "Add to Home screen" opens the
+  system full-screen with its own icon. If the server can't be reached, a
+  clear "No connection" page shows instead of a browser error. No bills or
+  data are stored on the device.
 
 ### Expenses, cash drawer and reports (phase 6)
 
@@ -180,7 +198,7 @@ docker compose exec api pytest        # with Docker
 cd backend && pytest                  # without Docker
 ```
 
-110 tests cover login, PIN lockout, token refresh, password change, permission
+115 tests cover login, PIN lockout, token refresh, password change, permission
 checks, the last-owner rule, settings, the audit log, items, purchases, average
 cost, cancelling purchases, opening stock, wastage, counts, bill totals,
 payments, stock deduction, voids, manager approvals, split and merge. Tests only ever run
@@ -242,5 +260,5 @@ docker-compose.yml
 | 4 | Bar pegs, open bottles, recipes, kitchen screen | Done |
 | 5 | Rooms, bookings, room bills, housekeeping | Done |
 | 6 | Expenses, shifts, reports | Done |
-| 7 | Admin dashboard with live charts | Next |
-| 8 | AI features, backups, deployment | |
+| 7 | Admin dashboard with live charts | Done |
+| 8 | AI features, backups, deployment | Next |

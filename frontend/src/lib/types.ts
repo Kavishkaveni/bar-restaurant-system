@@ -597,3 +597,53 @@ export type StockRow = {
   wastage_value: number | null;
   low: boolean;
 };
+
+// ---- Phase 7: dashboard -------------------------------------------------------------------
+
+export type DashboardData = {
+  day: string;
+  updated_at: string;
+  today: {
+    sales: number;
+    bills: number;
+    average_bill: number;
+    rooms: number;
+    money_in: number;
+    expenses: number;
+    cost: number | null;
+    profit: number | null;
+    sales_yesterday: number;
+    bills_yesterday: number;
+  };
+  hourly: { hour: number; today: number | null; yesterday: number }[];
+  trend: ReportDay[];
+  sections: ReportAmount[];
+  payments: ReportAmount[];
+  rooms: {
+    total: number;
+    occupied: number;
+    arriving: number;
+    leaving: number;
+    to_clean: number;
+    maintenance: number;
+  };
+  open_bills: number;
+  open_total: number;
+  kitchen: { new: number; preparing: number; ready: number };
+  low_stock: {
+    id: number;
+    name: string;
+    on_hand: string;
+    reorder_at: string;
+  }[];
+  low_stock_count: number;
+  drawer_expected: number | null;
+  drawer_open_since: string | null;
+  recent: {
+    id: number;
+    label: string;
+    total: number;
+    closed_at: string;
+    methods: PaymentMethod[];
+  }[];
+};

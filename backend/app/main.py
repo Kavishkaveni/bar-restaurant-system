@@ -1,6 +1,9 @@
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI, Request
+import jwt
+from fastapi import APIRouter, FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -10,6 +13,7 @@ from app.api import (
     bookings,
     bottles,
     catalogue,
+    dashboard,
     kitchen,
     money,
     orders,
@@ -25,12 +29,22 @@ from app.api import (
     users,
 )
 from app.core.config import get_settings
+from app.core.security import decode_token
+from app.services import live
 
 _cfg = get_settings()
 if _cfg.app_env == "production" and len(_cfg.jwt_secret) < 32:
     raise RuntimeError("Set JWT_SECRET to a random value of at least 32 characters in production")
 
-app = FastAPI(title="Bar & Restaurant System API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if get_settings().live_updates:
+        await live.hub.start()
+    yield
+    await live.hub.stop()
+
+
+app = FastAPI(title="Bar & Restaurant System API", version="0.1.0", lifespan=lifespan)
 log = logging.getLogger("app")
 
 
@@ -47,6 +61,20 @@ async def catch_errors(request: Request, call_next):
             status_code=500,
             content={"detail": "Something went wrong on the server. The details are in the backend window."},
         )
+
+
+# Tell open screens (dashboard, POS, kitchen, rooms) that something changed.
+@app.middleware("http")
+async def announce_changes(request: Request, call_next):
+    response = await call_next(request)
+    if (
+        request.method in ("POST", "PUT", "PATCH", "DELETE")
+        and response.status_code < 400
+        and get_settings().live_updates
+        and (topic := live.topic_for(request.url.path))
+    ):
+        await live.hub.publish(topic)
+    return response
 
 
 app.add_middleware(
@@ -76,6 +104,32 @@ api.include_router(rooms.router)
 api.include_router(bookings.router)
 api.include_router(money.router)
 api.include_router(reports.router)
+api.include_router(dashboard.router)
+
+
+@api.websocket("/live")
+async def live_updates(websocket: WebSocket, token: str = ""):
+    """Browsers connect here with their access token and get {"topic": ...}
+    messages when something changes."""
+    try:
+        payload = decode_token(token, "access")
+        int(payload["sub"])
+    except (jwt.PyJWTError, KeyError, ValueError):
+        await websocket.close(code=4401)
+        return
+    await websocket.accept()
+    queue = live.hub.subscribe()
+    try:
+        while True:
+            try:
+                message = await asyncio.wait_for(queue.get(), timeout=25)
+            except TimeoutError:
+                message = '{"topic": "ping"}'  # keeps proxies from closing an idle line
+            await websocket.send_text(message)
+    except (WebSocketDisconnect, RuntimeError):
+        pass
+    finally:
+        live.hub.unsubscribe(queue)
 
 
 @api.get("/health", tags=["health"])

@@ -32,9 +32,8 @@ export const NAV: NavItem[] = [
     href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
-    anyOf: ["dashboard.view"],
+    anyOf: ["dashboard.view", "dashboard.profit"],
     group: "Service",
-    phase: 7,
     blurb: "Today's sales, profit and expenses as live charts.",
   },
   {

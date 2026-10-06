@@ -48,6 +48,21 @@ async def get_current_user(
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
+def require_any(*options: str) -> Callable:
+    """Dependency: the current user must hold at least one listed permission."""
+
+    async def checker(user: CurrentUser) -> User:
+        if not set(options) & set(permissions_of(user)):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have access to this")
+        return user
+
+    return checker
+
+
+# Who can look at items and stock levels.
+STOCK_VIEWERS = ("catalogue.manage", "stock.count", "stock.wastage", "bar.open_bottle", "purchasing.manage")
+
+
 def require(*needed: str) -> Callable:
     """Dependency: the current user must hold every listed permission."""
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import audit_log, auth, roles, settings, users
+from app.api import audit_log, auth, catalogue, purchases, roles, settings, stock, suppliers, users
 from app.core.config import get_settings
 
 _cfg = get_settings()
@@ -24,6 +24,10 @@ api.include_router(users.router)
 api.include_router(roles.router)
 api.include_router(settings.router)
 api.include_router(audit_log.router)
+api.include_router(catalogue.router)
+api.include_router(stock.router)
+api.include_router(suppliers.router)
+api.include_router(purchases.router)
 
 
 @api.get("/health", tags=["health"])

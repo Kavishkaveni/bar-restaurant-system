@@ -16,7 +16,7 @@ export function Button({ variant = "primary", size = "md", busy, className, chil
       {...rest}
       disabled={disabled || busy}
       className={clsx(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+        "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
         size === "md" ? "h-10 px-4 text-sm" : "h-12 px-5 text-base",
         variant === "primary" && "bg-amber-500 text-bottle-950 hover:bg-amber-400",
         variant === "secondary" && "border border-line bg-surface text-ink hover:bg-ground",
@@ -133,11 +133,13 @@ export function Modal({
   title,
   onClose,
   children,
+  size = "md",
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: React.ReactNode;
+  size?: "md" | "lg";
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -152,7 +154,10 @@ export function Modal({
       ref={ref}
       onClose={onClose}
       onCancel={onClose}
-      className="m-0 mt-auto w-full max-w-none rounded-t-2xl border border-line bg-surface p-0 text-ink backdrop:bg-bottle-950/50 sm:m-auto sm:max-w-lg sm:rounded-2xl"
+      className={clsx(
+        "m-0 mt-auto w-full max-w-none rounded-t-2xl border border-line bg-surface p-0 text-ink backdrop:bg-bottle-950/50 sm:m-auto sm:rounded-2xl",
+        size === "md" ? "sm:max-w-lg" : "sm:max-w-3xl",
+      )}
     >
       {open && (
         <div className="max-h-[90dvh] overflow-y-auto">
@@ -178,4 +183,45 @@ export function formatDateTime(iso: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+export function Tabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+}: {
+  tabs: { key: T; label: string }[];
+  value: T;
+  onChange: (key: T) => void;
+}) {
+  return (
+    <div role="tablist" className="mb-5 flex gap-1 overflow-x-auto border-b border-line">
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          role="tab"
+          aria-selected={t.key === value}
+          onClick={() => onChange(t.key)}
+          className={clsx(
+            "-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-semibold transition-colors",
+            t.key === value ? "border-amber-500 text-ink" : "border-transparent text-ink-soft hover:text-ink",
+          )}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function Textarea({ className, ...rest }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...rest}
+      className={clsx(
+        "min-h-20 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-soft/70 focus:border-amber-500 focus:outline-none",
+        className,
+      )}
+    />
+  );
 }

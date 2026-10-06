@@ -4,11 +4,35 @@ One responsive website that runs a single-outlet bar, restaurant and rooms
 business: billing, liquor and food stock, rooms, purchasing, expenses, reports
 and AI. Staff use it on a counter PC or tablet; the owner uses it on a phone.
 
-This is **phase 1 of 8: foundation**. It includes login, staff, roles and
-permissions, business settings, the audit log, and the app layout every
-later module plugs into.
+Phases 1 and 2 of 8 are done: the foundation (login, staff, roles, settings,
+audit log, layout) and inventory and purchasing.
 
 ## What works now
+
+### Inventory and purchases (phase 2)
+
+- **Categories** grouped into Bar, Sundries, Kitchen and Other.
+- **Items** counted the way they're really handled: bottles measured in ml,
+  packs of pieces (cigarettes sold by pack or single), single pieces, kilograms
+  or litres. Cost price, selling price, reorder level, usual supplier, barcode.
+  Items you don't count (salt, spices) can be bought and costed without stock.
+- **Stock ledger**: stock is never overwritten. Every change is a row in
+  `stock_movements` in the smallest unit (ml, g, piece), and stock on hand is
+  their sum. Shown as staff count it: "5 bottles + 600 ml", "3 packs + 7 pcs".
+- **Opening stock** once per item, **wastage** with a reason, and **stock
+  counts** that record the difference instead of overwriting.
+- **Stock history** per item with a running balance, who did it, and when.
+- **Low-stock** filter and warnings based on each item's reorder level.
+- **Average cost**: purchases update each item's weighted average cost, which
+  values the stock and will be used for profit in later phases.
+- **Suppliers** with how much you owe each one.
+- **Purchases**: enter a supplier invoice with any number of lines; stock goes up
+  in the same transaction. Record payments later. Cancel a purchase entered by
+  mistake and its stock is taken back out (unpaid purchases only).
+- An item's unit can't change once stock is recorded, because past stock was
+  counted in the old unit.
+
+### Foundation (phase 1)
 
 - **Login with a password**, or **switch staff with a 4-digit PIN** on a shared
   counter screen (tap your name, enter your PIN). Five wrong PINs lock that
@@ -69,8 +93,9 @@ docker compose exec api pytest        # with Docker
 cd backend && pytest                  # without Docker
 ```
 
-22 tests cover login, PIN lockout, token refresh, password change, permission
-checks, the last-owner rule, settings and the audit log. Tests only ever run
+50 tests cover login, PIN lockout, token refresh, password change, permission
+checks, the last-owner rule, settings, the audit log, items, purchases, average
+cost, cancelling purchases, opening stock, wastage and counts. Tests only ever run
 against a database whose name ends in `_test` and refuse to start otherwise,
 because they drop and recreate every table.
 
@@ -124,8 +149,8 @@ docker-compose.yml
 | Phase | What | Status |
 | --- | --- | --- |
 | 1 | Foundation: login, roles, staff, settings, audit log, layout | Done |
-| 2 | Items, suppliers, purchases, stock ledger | Next |
-| 3 | POS and billing (go live for bar and sundries) | |
+| 2 | Items, suppliers, purchases, stock ledger | Done |
+| 3 | POS and billing (go live for bar and sundries) | Next |
 | 4 | Bar pegs, open bottles, recipes, kitchen screen | |
 | 5 | Rooms, bookings, room bills, housekeeping | |
 | 6 | Expenses, shifts, reports | |

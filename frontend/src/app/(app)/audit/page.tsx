@@ -17,15 +17,34 @@ const ACTION_WORDS: Record<string, string> = {
   create: "created",
   update: "updated",
   update_permissions: "changed permissions of",
+  delete: "deleted",
+  restore: "restored",
+  opening_stock: "entered opening stock for",
+  wastage: "recorded wastage of",
+  stock_count: "counted",
+  payment: "recorded a payment on",
+  cancel: "cancelled",
 };
 
-const ENTITY_WORDS: Record<string, string> = { user: "staff member", role: "role", settings: "settings" };
+const ENTITY_WORDS: Record<string, string> = {
+  user: "staff member",
+  role: "role",
+  settings: "settings",
+  category: "category",
+  item: "item",
+  supplier: "supplier",
+  purchase: "purchase from",
+};
+
+// Stock actions read better without the word "item": "counted Arrack".
+const NO_ENTITY_WORD = ["opening_stock", "wastage", "stock_count"];
 
 function describe(e: AuditEntry): string {
   const verb = ACTION_WORDS[e.action] ?? e.action.replaceAll("_", " ");
   if (["login", "pin_login", "pin_locked", "change_password"].includes(e.action)) return verb;
   if (e.entity === "settings") return `${verb} settings`;
   const name = (e.after?.name as string) ?? (e.before?.name as string) ?? `#${e.entity_id}`;
+  if (NO_ENTITY_WORD.includes(e.action)) return `${verb} ${name}`;
   return `${verb} ${ENTITY_WORDS[e.entity] ?? e.entity} ${name}`;
 }
 
@@ -94,6 +113,10 @@ function Audit() {
               <option value="user">Staff</option>
               <option value="role">Roles</option>
               <option value="settings">Settings</option>
+              <option value="item">Items and stock</option>
+              <option value="category">Categories</option>
+              <option value="supplier">Suppliers</option>
+              <option value="purchase">Purchases</option>
             </Select>
           )}
         </Field>

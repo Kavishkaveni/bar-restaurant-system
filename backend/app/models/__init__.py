@@ -10,6 +10,7 @@ from app.models.inventory import (
     StockMovement,
     Supplier,
 )
+from app.models.money import CashMovement, Expense, ExpenseCategory, Shift
 from app.models.pos import DiningTable, Order, OrderLine, Payment, SellOption
 from app.models.rooms import Booking, BookingCharge, BookingPayment, Room, RoomType
 from app.models.setting import Setting
@@ -21,8 +22,11 @@ __all__ = [
     "Booking",
     "BookingCharge",
     "BookingPayment",
+    "CashMovement",
     "Category",
     "DiningTable",
+    "Expense",
+    "ExpenseCategory",
     "Item",
     "OpenBottle",
     "Order",
@@ -37,6 +41,7 @@ __all__ = [
     "RoomType",
     "SellOption",
     "Setting",
+    "Shift",
     "StockMovement",
     "Supplier",
     "User",

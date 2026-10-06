@@ -661,6 +661,7 @@ async def void(order_id: int, body: VoidIn, actor: PosUser, db: DB, request: Req
     order.status = "void"
     order.void_reason = body.reason
     order.voided_by = approver.id
+    order.voided_at = datetime.now(timezone.utc)
     if not order.closed_at:
         order.closed_at = datetime.now(timezone.utc)
     audit.record(db, user=actor, action="void", entity="order", entity_id=order.id,

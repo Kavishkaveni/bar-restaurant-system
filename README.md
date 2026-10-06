@@ -4,11 +4,29 @@ One responsive website that runs a single-outlet bar, restaurant and rooms
 business: billing, liquor and food stock, rooms, purchasing, expenses, reports
 and AI. Staff use it on a counter PC or tablet; the owner uses it on a phone.
 
-Phases 1 to 5 of 8 are done: the foundation (login, staff, roles, settings,
+Phases 1 to 6 of 8 are done: the foundation (login, staff, roles, settings,
 audit log, layout), inventory and purchasing, the POS, the bar and kitchen
-side (pegs from open bottles, recipes, kitchen screen), and rooms.
+side (pegs from open bottles, recipes, kitchen screen), rooms, and expenses,
+the cash drawer and reports.
 
 ## What works now
+
+### Expenses, cash drawer and reports (phase 6)
+
+- **Expenses** by category (salaries, rent, electricity, licences, repairs…;
+  categories can be added or renamed), with date, amount, how it was paid and
+  who to. Mistakes are cancelled with a reason, not deleted.
+- **Cash drawer**: a cashier opens a shift with a float. Cash from bills and
+  room payments goes in, voided cash bills, pay-outs (expenses paid from the
+  till) and cash drops come out. At close the cashier counts notes and coins
+  and the system shows short or over. Past shifts are listed for the owner.
+- The POS shows whether the drawer is open and how much should be in it.
+- **Reports** for today, yesterday, a week, a month or any dates: sales by
+  section, room income, cost of what was sold, wastage, stock count
+  differences, expenses and profit; money in by method; best sellers; day by
+  day. Managers see sales; profit needs "Dashboard: profit and costs".
+- **Stock movement** report: start, received, sold, wasted, count differences
+  and end for every item, with stock value; download for Excel.
 
 ### Rooms (phase 5)
 
@@ -162,7 +180,7 @@ docker compose exec api pytest        # with Docker
 cd backend && pytest                  # without Docker
 ```
 
-104 tests cover login, PIN lockout, token refresh, password change, permission
+110 tests cover login, PIN lockout, token refresh, password change, permission
 checks, the last-owner rule, settings, the audit log, items, purchases, average
 cost, cancelling purchases, opening stock, wastage, counts, bill totals,
 payments, stock deduction, voids, manager approvals, split and merge. Tests only ever run
@@ -223,6 +241,6 @@ docker-compose.yml
 | 3 | POS and billing (go live for bar and sundries) | Done |
 | 4 | Bar pegs, open bottles, recipes, kitchen screen | Done |
 | 5 | Rooms, bookings, room bills, housekeeping | Done |
-| 6 | Expenses, shifts, reports | Next |
-| 7 | Admin dashboard with live charts | |
+| 6 | Expenses, shifts, reports | Done |
+| 7 | Admin dashboard with live charts | Next |
 | 8 | AI features, backups, deployment | |

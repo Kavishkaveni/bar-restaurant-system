@@ -355,7 +355,8 @@ export type Ticket = {
 // ---- Phase 5: rooms ---------------------------------------------------------------
 
 export type Housekeeping = "clean" | "dirty" | "maintenance";
-export type BookingStatus = "booked" | "checked_in" | "checked_out" | "cancelled" | "no_show";
+export type BookingStatus =
+  "booked" | "checked_in" | "checked_out" | "cancelled" | "no_show";
 export type StayType = "night" | "short";
 export type IdType = "nic" | "passport" | "driving_licence" | "other";
 export type FolioMethod = "cash" | "card" | "bank_transfer" | "qr";
@@ -465,4 +466,134 @@ export type BoardRoom = {
   next: BookingBrief | null;
 };
 
-export type Board = { rooms: BoardRoom[]; arrivals_today: number; departures_today: number; in_house: number };
+export type Board = {
+  rooms: BoardRoom[];
+  arrivals_today: number;
+  departures_today: number;
+  in_house: number;
+};
+
+// ---- Phase 6: expenses, cash drawer, reports ----------------------------------------------
+
+export type ExpenseMethod = "cash" | "card" | "bank_transfer" | "qr" | "cheque";
+export type ExpenseCategory = { id: number; name: string; sort_order: number };
+export type Expense = {
+  id: number;
+  category: ExpenseCategory;
+  date: string;
+  amount: number;
+  method: ExpenseMethod;
+  payee: string;
+  note: string;
+  shift_id: number | null;
+  user: { id: number; name: string } | null;
+  is_void: boolean;
+  void_reason: string;
+  created_at: string;
+};
+export type ExpensePage = {
+  items: Expense[];
+  total: number;
+  by_category: {
+    category_id: number;
+    name: string;
+    amount: number;
+    count: number;
+  }[];
+};
+
+export type Drawer = {
+  opening_float: number;
+  cash_sales: number;
+  cash_refunds: number;
+  room_cash: number;
+  room_refunds: number;
+  paid_out: number;
+  cash_in: number;
+  cash_out: number;
+  expected: number;
+};
+export type Shift = {
+  id: number;
+  status: "open" | "closed";
+  opening_float: number;
+  opener: { id: number; name: string } | null;
+  opened_at: string;
+  closer: { id: number; name: string } | null;
+  closed_at: string | null;
+  counted_cash: number | null;
+  difference: number | null;
+  note: string;
+  drawer: Drawer;
+  movements: {
+    id: number;
+    kind: "in" | "out";
+    amount: number;
+    reason: string;
+    user: { id: number; name: string } | null;
+    created_at: string;
+  }[];
+  payouts: Expense[];
+};
+
+export type ReportAmount = {
+  key: string;
+  label: string;
+  amount: number;
+  count: number;
+};
+export type ReportDay = {
+  day: string;
+  sales: number;
+  rooms: number;
+  cost: number | null;
+  expenses: number | null;
+  profit: number | null;
+};
+export type Summary = {
+  start: string;
+  end: string;
+  bills: number;
+  gross_sales: number;
+  discounts: number;
+  service_charge: number;
+  sales_tax: number;
+  sales_total: number;
+  sales_net: number;
+  by_section: ReportAmount[];
+  tips: number;
+  voids: number;
+  void_amount: number;
+  stays: number;
+  nights: number;
+  room_income: number;
+  room_tax: number;
+  cancellation_income: number;
+  payments: ReportAmount[];
+  expenses: number;
+  expenses_by_category: ReportAmount[];
+  top_items: { name: string; qty: number; amount: number }[];
+  daily: ReportDay[];
+  cost_of_sales: number | null;
+  wastage: number | null;
+  stock_adjustments: number | null;
+  gross_profit: number | null;
+  net_profit: number | null;
+};
+export type StockRow = {
+  item_id: number;
+  name: string;
+  category: string;
+  unit: string;
+  opening: string;
+  received: string;
+  sold: string;
+  wasted: string;
+  adjusted: string;
+  other: string;
+  closing: string;
+  closing_qty: number;
+  closing_value: number | null;
+  wastage_value: number | null;
+  low: boolean;
+};

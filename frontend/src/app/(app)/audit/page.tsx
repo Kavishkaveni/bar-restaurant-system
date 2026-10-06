@@ -55,6 +55,9 @@ const ACTION_WORDS: Record<string, string> = {
   charge_room: "charged to the room:",
   housekeeping: "changed housekeeping of",
   no_show: "marked as no-show",
+  close: "closed",
+  cash_in: "put cash into",
+  cash_out: "took cash out of",
 };
 
 const ENTITY_WORDS: Record<string, string> = {
@@ -71,6 +74,9 @@ const ENTITY_WORDS: Record<string, string> = {
   booking: "booking",
   room: "",
   room_type: "room type",
+  shift: "cash drawer shift",
+  expense: "expense",
+  expense_category: "expense category",
 };
 
 // Stock actions read better without the word "item": "counted Arrack".

@@ -63,6 +63,18 @@ async def open_bills(db: DB, booking_id: int) -> list[Order]:
     return list(await db.scalars(select(Order).where(Order.booking_id == booking_id, Order.status == "open")))
 
 
+async def unsettled_bills(db: DB, booking_id: int) -> list[Order]:
+    """Open room service bills that still have items. Empty ones (started by
+    mistake) are thrown away so they don't block check-out."""
+    keep = []
+    for o in await open_bills(db, booking_id):
+        if o.lines or o.payments:
+            keep.append(o)
+        else:
+            await db.delete(o)
+    return keep
+
+
 async def to_out(db: DB, b: Booking) -> BookingOut:
     f = folio_math.folio(b, await tz_name(db))
     bills = await open_bills(db, b.id)
@@ -337,7 +349,7 @@ async def check_out(booking_id: int, body: CheckOutIn, actor: RoomsManager, db: 
     """Fix the room charge, take the balance (or give back extra advance), and free the room."""
     b = await load(db, booking_id, lock=True)
     ensure_status(b, "checked_in")
-    bills = await open_bills(db, b.id)
+    bills = await unsettled_bills(db, b.id)
     if bills:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
@@ -383,7 +395,7 @@ async def cancel(booking_id: int, body: CancelIn, actor: RoomsManager, db: DB, r
     """Cancel a booking (or mark a no-show). Any advance is refunded or kept as a cancellation charge."""
     b = await load(db, booking_id, lock=True)
     ensure_status(b, "booked")
-    bills = await open_bills(db, b.id)
+    bills = await unsettled_bills(db, b.id)
     if bills:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Room service bill #{bills[0].id} is still open")
     paid = folio_math.folio(b, await tz_name(db)).paid

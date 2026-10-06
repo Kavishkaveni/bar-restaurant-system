@@ -11,10 +11,12 @@ from app.api import (
     bottles,
     catalogue,
     kitchen,
+    money,
     orders,
     pos,
     purchases,
     recipes,
+    reports,
     roles,
     rooms,
     settings,
@@ -72,6 +74,8 @@ api.include_router(bottles.router)
 api.include_router(kitchen.router)
 api.include_router(rooms.router)
 api.include_router(bookings.router)
+api.include_router(money.router)
+api.include_router(reports.router)
 
 
 @api.get("/health", tags=["health"])

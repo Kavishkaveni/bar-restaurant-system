@@ -129,6 +129,8 @@ async def test_room_service_charged_to_room_then_checkout(client, owner, hotel, 
     b = await book(client, h, hotel.r101["id"], days=1, start=NOW, check_in_now=True,
                    advance={"method": "card", "amount": 5000})
 
+    # An empty room service bill started by mistake doesn't block check-out.
+    await call(client, h, "POST", "/api/orders", {"type": "room", "booking_id": b["id"]})
     o = await call(client, h, "POST", "/api/orders", {"type": "room", "booking_id": b["id"]})
     assert o["label"] == "Room 101 · Nuwan Perera"
     o = await call(client, h, "POST", f"/api/orders/{o['id']}/lines", {"item_id": beer["id"], "qty": 2})

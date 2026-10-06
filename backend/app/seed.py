@@ -14,7 +14,8 @@ from app.core.config import get_settings
 from app.core.permissions import DEFAULT_ROLES, DEFAULT_SETTINGS, OWNER_ROLE
 from app.core.security import hash_secret
 from app.db import SessionLocal
-from app.models import Role, RolePermission, Setting, User
+from app.models import ExpenseCategory, Role, RolePermission, Setting, User
+from app.models.money import DEFAULT_EXPENSE_CATEGORIES
 
 
 async def seed() -> None:
@@ -36,6 +37,10 @@ async def seed() -> None:
         for key, value in DEFAULT_SETTINGS.items():
             if await db.get(Setting, key) is None:
                 db.add(Setting(key=key, value=value))
+
+        if not await db.scalar(select(func.count()).select_from(ExpenseCategory)):
+            for i, name in enumerate(DEFAULT_EXPENSE_CATEGORIES):
+                db.add(ExpenseCategory(name=name, sort_order=i))
 
         await db.flush()
 

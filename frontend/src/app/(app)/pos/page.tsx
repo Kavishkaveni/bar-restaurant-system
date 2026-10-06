@@ -9,12 +9,15 @@ import {
   Settings2,
   ShoppingBag,
   UserRound,
+  Wallet,
   Wine,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Guard } from "@/components/Guard";
+import { useCurrentShift } from "@/components/money/CashDrawer";
 import { TablesManager } from "@/components/pos/TablesManager";
 import {
   Badge,
@@ -107,6 +110,7 @@ function Floor() {
 
   return (
     <>
+      {can("pos.payment") && <DrawerBanner />}
       <div className="mb-5 flex flex-wrap gap-2">
         {takesOrders && (
           <>
@@ -262,6 +266,45 @@ function Floor() {
         onClose={() => setRoomPicker(false)}
       />
     </>
+  );
+}
+
+/** Reminds the cashier to open the drawer before taking cash. */
+function DrawerBanner() {
+  const money = useMoney();
+  const shift = useCurrentShift();
+  if (shift.isLoading) return null;
+  const s = shift.data;
+  return (
+    <Link
+      href="/expenses"
+      className={clsx(
+        "mb-4 flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm hover:brightness-95",
+        s ? "border-line bg-surface" : "border-amber-500 bg-amber-100",
+      )}
+    >
+      <Wallet
+        className={clsx(
+          "size-5 shrink-0",
+          s ? "text-ink-soft" : "text-amber-600",
+        )}
+        aria-hidden
+      />
+      {s ? (
+        <span className="flex-1">
+          Cash drawer open since {timeOf(s.opened_at)} ({s.opener?.name}) ·{" "}
+          <span className="font-semibold tabular">
+            {money(s.drawer.expected)}
+          </span>{" "}
+          in the drawer
+        </span>
+      ) : (
+        <span className="flex-1 font-medium">
+          The cash drawer isn&apos;t open. Tap here to open it before taking
+          cash.
+        </span>
+      )}
+    </Link>
   );
 }
 

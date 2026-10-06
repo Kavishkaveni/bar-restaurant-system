@@ -101,6 +101,7 @@ class Order(Base, TimestampMixin):
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     void_reason: Mapped[str] = mapped_column(String(300), default="")
     voided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     merged_into: Mapped[int | None] = mapped_column(ForeignKey("orders.id"))
 
     table: Mapped[DiningTable | None] = relationship(lazy="selectin")

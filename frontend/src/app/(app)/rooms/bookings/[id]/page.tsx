@@ -126,6 +126,8 @@ function BookingView() {
   };
 
   async function startRoomService() {
+    // Keep adding to the guest's open room service bill instead of starting another.
+    if (b!.open_bills.length) return router.push(`/pos/${b!.open_bills[0].id}`);
     setRoomService(true);
     try {
       const o = await api<Order>("/orders", {

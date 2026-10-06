@@ -9,6 +9,7 @@ import { Guard } from "@/components/Guard";
 import { CategoriesTab, MODULES } from "@/components/inventory/CategoriesTab";
 import { ItemDetail } from "@/components/inventory/ItemDetail";
 import { ItemForm } from "@/components/inventory/ItemForm";
+import { OpenBottlesTab } from "@/components/inventory/OpenBottlesTab";
 import {
   Badge,
   Button,
@@ -34,7 +35,7 @@ const VIEWERS = [
 ];
 
 export default function InventoryPage() {
-  const [tab, setTab] = useState<"items" | "categories">("items");
+  const [tab, setTab] = useState<"items" | "bottles" | "categories">("items");
   return (
     <Guard anyOf={VIEWERS}>
       <PageHeader
@@ -44,12 +45,15 @@ export default function InventoryPage() {
       <Tabs
         tabs={[
           { key: "items", label: "Items and stock" },
+          { key: "bottles", label: "Open bottles" },
           { key: "categories", label: "Categories" },
         ]}
         value={tab}
         onChange={setTab}
       />
-      {tab === "items" ? <ItemsTab /> : <CategoriesTab />}
+      {tab === "items" && <ItemsTab />}
+      {tab === "bottles" && <OpenBottlesTab />}
+      {tab === "categories" && <CategoriesTab />}
     </Guard>
   );
 }
@@ -285,6 +289,9 @@ function ItemsTab() {
         key={editing === "new" ? "new" : (editing?.id ?? "none")}
         editing={editing}
         onClose={() => setEditing(null)}
+        onSaved={(it, isNew) => {
+          if (isNew && it.kind === "build_assembly") setOpenId(it.id);
+        }}
       />
     </>
   );

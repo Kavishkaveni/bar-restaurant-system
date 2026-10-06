@@ -34,6 +34,8 @@ export function SellOptions({ item }: { item: Item }) {
     onSuccess: refresh,
   });
 
+  const isPeg = (q: number) =>
+    item.base_unit === "ml" && item.unit_size > 1 && q < item.unit_size;
   const takes = (q: number) => {
     if (q === item.unit_size) return `1 ${item.stock_unit}`;
     return `${round3(q)} ${BASE_LABEL[item.base_unit]}`;
@@ -44,6 +46,14 @@ export function SellOptions({ item }: { item: Item }) {
       <h3 className="font-semibold">How it&apos;s sold</h3>
       <p className="mb-2 text-sm text-ink-soft">
         Each line is a button on the POS. Stock goes down by the amount shown.
+        {item.base_unit === "ml" && item.unit_size > 1 && (
+          <>
+            {" "}
+            Anything smaller than a full {item.stock_unit} is a peg: it pours
+            from the open bottle, and a new bottle opens by itself when that one
+            runs out.
+          </>
+        )}
       </p>
       <ul className="divide-y divide-line rounded-xl border border-line">
         <li className="flex items-center gap-3 px-4 py-2.5 text-sm">
@@ -76,7 +86,9 @@ export function SellOptions({ item }: { item: Item }) {
               <span className="min-w-0 flex-1">
                 <span className="font-medium">{o.name}</span>
                 <span className="block text-xs text-ink-soft">
-                  takes {takes(o.deduct_qty)} from stock
+                  {isPeg(o.deduct_qty)
+                    ? `peg: pours ${takes(o.deduct_qty)} from the open bottle`
+                    : `takes ${takes(o.deduct_qty)} from stock`}
                 </span>
               </span>
               <span className="tabular">{money(o.price)}</span>
@@ -127,6 +139,12 @@ export function SellOptions({ item }: { item: Item }) {
     </section>
   );
 }
+
+const PRESETS = [
+  { ml: 30, name: "Peg 30 ml" },
+  { ml: 60, name: "Peg 60 ml" },
+  { ml: 100, name: "Large 100 ml" },
+];
 
 function OptionForm({
   item,
@@ -200,6 +218,24 @@ function OptionForm({
           )}
         </Field>
       </div>
+      {!option && item.base_unit === "ml" && item.unit_size > 1 && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-ink-soft">Quick fill:</span>
+          {PRESETS.filter((p) => p.ml < item.unit_size).map((p) => (
+            <Button
+              key={p.ml}
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setQty(p.ml);
+                setName(p.name);
+              }}
+            >
+              {p.name}
+            </Button>
+          ))}
+        </div>
+      )}
       <QtyInput
         item={item}
         value={qty}

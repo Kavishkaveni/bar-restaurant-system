@@ -78,6 +78,9 @@ class CategoryBrief(BaseModel):
 class ItemIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     category_id: int
+    # final_product: bought (or batch-made) and counted. build_assembly: a dish
+    # made to order from a recipe; it has no stock of its own.
+    kind: Literal["final_product", "build_assembly"] = "final_product"
     base_unit: BaseUnit
     unit_size: Decimal = Field(gt=0, max_digits=14, decimal_places=3)
     stock_unit: str = Field(min_length=1, max_length=20)
@@ -90,6 +93,14 @@ class ItemIn(BaseModel):
     notes: str = Field(default="", max_length=2000)
 
     _strip = field_validator("name", "stock_unit", "sku")(_strip)
+
+    def normalised(self) -> dict:
+        """Dishes are sold one portion at a time and have no stock of their own."""
+        data = self.model_dump()
+        if self.kind == "build_assembly":
+            data.update(base_unit="piece", unit_size=Decimal(1), track_stock=False,
+                        reorder_level=Decimal(0), stock_unit=self.stock_unit or "plate")
+        return data
 
 
 class ItemOut(BaseModel):
@@ -111,6 +122,7 @@ class ItemOut(BaseModel):
     sku: str
     notes: str
     is_active: bool
+    batch_yield: Num | None = None
     # Filled in by the API from the stock ledger.
     on_hand: Num = Decimal(0)
     on_hand_display: str = ""
@@ -239,3 +251,88 @@ class PurchasePage(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+# ---- Recipes ------------------------------------------------------------------
+
+class RecipeLineIn(BaseModel):
+    component_id: int
+    qty: Decimal = Field(gt=0, max_digits=14, decimal_places=3)  # component base units
+
+
+class RecipeIn(BaseModel):
+    lines: list[RecipeLineIn] = Field(max_length=100)
+    # Only for batch items: how much one batch makes, in base units.
+    batch_yield: Decimal | None = Field(default=None, gt=0, max_digits=14, decimal_places=3)
+
+
+class RecipeComponent(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    base_unit: BaseUnit
+    unit_size: Num
+    stock_unit: str
+    track_stock: bool
+
+
+class RecipeLineOut(BaseModel):
+    id: int
+    component: RecipeComponent
+    qty: Num
+    qty_display: str
+    cost: Num
+    on_hand_display: str
+
+
+class RecipeOut(BaseModel):
+    item_id: int
+    kind: str
+    lines: list[RecipeLineOut]
+    ingredient_cost: Num
+    overhead_percent: Num
+    total_cost: Num
+    selling_price: Num | None
+    margin: Num | None
+    margin_percent: Num | None
+    batch_yield: Num | None
+    batch_yield_display: str | None
+    portions_available: Num | None
+
+
+class ProduceIn(BaseModel):
+    batches: Decimal = Field(gt=0, max_digits=8, decimal_places=3)
+    note: str = Field(default="", max_length=200)
+
+
+# ---- Open bottles -------------------------------------------------------------
+
+class OpenBottleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    size_ml: Num
+    remaining_ml: Num
+    opened_at: datetime
+    opener: MovementUser | None
+    note: str
+
+
+class BottleItemOut(BaseModel):
+    item_id: int
+    name: str
+    category: str
+    unit_size: Num
+    sealed: int
+    on_hand_display: str
+    smallest_pour: Num | None
+    running_low: bool
+    open: list[OpenBottleOut]
+
+
+class FinishBottleIn(BaseModel):
+    """The bottle is empty. Anything the record still shows is unaccounted for
+    (over-pouring or spillage) and is written off as wastage."""
+
+    reason: str = Field(default="Bottle finished", max_length=200)

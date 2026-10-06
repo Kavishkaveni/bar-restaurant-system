@@ -188,6 +188,7 @@ class LineOut(BaseModel):
     unit_price: Num
     line_total: Num
     note: str
+    kitchen_status: str | None
     created_at: datetime
 
 

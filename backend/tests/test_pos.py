@@ -136,7 +136,7 @@ async def test_paying_closes_bill_and_deducts_stock(client, owner, shop):
     assert await on_hand(client, owner, shop["gold"]["id"]) == "9 packs + 17 pcs"
 
     hist = (await client.get(f"/api/items/{shop['gold']['id']}/movements", headers=owner)).json()
-    assert hist["items"][0]["type"] == "sale" and hist["items"][0]["reason"] == "Gold Leaf (Single)"
+    assert hist["items"][0]["type"] == "sale" and hist["items"][0]["reason"] == f"Bill #{o['id']}"
 
     # Closed bills can't change.
     r = await client.post(f"/api/orders/{o['id']}/lines", json={"item_id": shop["whisky"]["id"]}, headers=owner)

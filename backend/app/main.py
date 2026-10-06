@@ -4,7 +4,22 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import audit_log, auth, catalogue, orders, pos, purchases, roles, settings, stock, suppliers, users
+from app.api import (
+    audit_log,
+    auth,
+    bottles,
+    catalogue,
+    kitchen,
+    orders,
+    pos,
+    purchases,
+    recipes,
+    roles,
+    settings,
+    stock,
+    suppliers,
+    users,
+)
 from app.core.config import get_settings
 
 _cfg = get_settings()
@@ -50,6 +65,9 @@ api.include_router(suppliers.router)
 api.include_router(purchases.router)
 api.include_router(pos.router)
 api.include_router(orders.router)
+api.include_router(recipes.router)
+api.include_router(bottles.router)
+api.include_router(kitchen.router)
 
 
 @api.get("/health", tags=["health"])

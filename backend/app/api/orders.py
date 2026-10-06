@@ -121,11 +121,13 @@ async def respond(db: DB, order_id: int) -> OrderOut:
 
 
 async def guard_reduction(
-    db: DB, order: Order, actor: User, approval: Approval | None, request: Request
+    db: DB, order: Order, actor: User, approval: Approval | None, request: Request, line: OrderLine | None = None
 ) -> User:
-    """Taking things off a bill after the customer has seen it (printed) or
-    paid part of it needs a manager. Before that, staff fix mistakes freely."""
-    if order.printed_count > 0 or order.payments:
+    """Taking things off a bill after the customer has seen it (printed), paid
+    part of it, or the kitchen started cooking it needs a manager. Before that,
+    staff fix mistakes freely."""
+    cooking = line is not None and line.kitchen_status in ("preparing", "ready", "served")
+    if order.printed_count > 0 or order.payments or cooking:
         return await authorize(db, actor, APPROVE, approval, request)
     return actor
 
@@ -317,11 +319,14 @@ async def add_line(order_id: int, body: LineAdd, actor: Waiter, db: DB):
         name, price, deduct = item.name, item.selling_price, item.unit_size
 
     note = body.note.strip()
+    for_kitchen = item.category.module == "food"
     same = next(
         (
             line for line in order.lines
             if line.item_id == item.id and line.option_id == body.option_id
             and line.unit_price == price and not line.note and not note
+            # A second portion after the kitchen started the first is a new ticket line.
+            and line.kitchen_status in (None, "new")
         ),
         None,
     )
@@ -330,7 +335,8 @@ async def add_line(order_id: int, body: LineAdd, actor: Waiter, db: DB):
     else:
         order.lines.append(
             OrderLine(item_id=item.id, option_id=body.option_id, name=name, qty=body.qty, unit_price=price,
-                      deduct_per_unit=deduct, note=note, added_by=actor.id)
+                      deduct_per_unit=deduct, note=note, added_by=actor.id,
+                      kitchen_status="new" if for_kitchen else None)
         )
     await db.commit()
     return await respond(db, order.id)
@@ -349,7 +355,7 @@ async def update_line(order_id: int, line_id: int, body: LineUpdate, actor: Wait
     ensure_open(order)
     line = _line(order, line_id)
     if body.qty < line.qty:
-        approver = await guard_reduction(db, order, actor, body.approval, request)
+        approver = await guard_reduction(db, order, actor, body.approval, request, line)
         audit.record(db, user=actor, action="reduce_line", entity="order", entity_id=order.id,
                      before={"name": f"#{order.id}", "item": line.name, "qty": float(line.qty)},
                      after={"name": f"#{order.id}", "item": line.name, "qty": float(body.qty),
@@ -367,7 +373,7 @@ async def remove_line(order_id: int, line_id: int, body: LineRemove, actor: Wait
     order = await load(db, order_id, lock=True)
     ensure_open(order)
     line = _line(order, line_id)
-    approver = await guard_reduction(db, order, actor, body.approval, request)
+    approver = await guard_reduction(db, order, actor, body.approval, request, line)
     audit.record(db, user=actor, action="remove_line", entity="order", entity_id=order.id,
                  before={"name": f"#{order.id}", "item": line.name, "qty": float(line.qty),
                          "total": float(line.line_total)},
@@ -473,7 +479,7 @@ async def split(order_id: int, body: SplitIn, actor: Waiter, db: DB, request: Re
             new.lines.append(
                 OrderLine(item_id=line.item_id, option_id=line.option_id, name=line.name, qty=qty,
                           unit_price=line.unit_price, deduct_per_unit=line.deduct_per_unit, note=line.note,
-                          added_by=actor.id)
+                          added_by=actor.id, kitchen_status=line.kitchen_status)
             )
     audit.record(db, user=actor, action="split", entity="order", entity_id=order.id,
                  after={"name": f"#{order.id}", "new_bill": f"#{new.id}"}, request=request)

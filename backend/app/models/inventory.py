@@ -94,6 +94,9 @@ class Item(Base, TimestampMixin):
     sku: Mapped[str] = mapped_column(String(60), default="")
     notes: Mapped[str] = mapped_column(Text, default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # For stocked items made in-house from a recipe (e.g. Spice Mix): how much
+    # one batch makes, in base units. None = bought, not made.
+    batch_yield: Mapped[Decimal | None] = mapped_column(QTY)
 
     category: Mapped[Category] = relationship(lazy="selectin")
     supplier: Mapped[Supplier | None] = relationship(lazy="selectin")
@@ -171,4 +174,54 @@ class PurchaseLine(Base):
     __table_args__ = (
         CheckConstraint("qty > 0", name="qty_positive"),
         CheckConstraint("unit_cost >= 0", name="cost_non_negative"),
+    )
+
+
+class RecipeLine(Base):
+    """One ingredient of a dish (build assembly) or of a batch recipe.
+
+    For a dish, qty is used per portion sold. For a batch item, qty is used
+    per batch made. Always in the component's base unit (g, ml, piece)."""
+
+    __tablename__ = "recipe_lines"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("items.id", ondelete="CASCADE"), index=True)
+    component_id: Mapped[int] = mapped_column(ForeignKey("items.id"))
+    qty: Mapped[Decimal] = mapped_column(QTY)
+    sort_order: Mapped[int] = mapped_column(default=0)
+
+    component: Mapped[Item] = relationship(foreign_keys=[component_id], lazy="selectin")
+
+    __table_args__ = (
+        CheckConstraint("qty > 0", name="qty_positive"),
+        CheckConstraint("item_id <> component_id", name="not_self"),
+    )
+
+
+class OpenBottle(Base):
+    """A bottle that's been opened for pegs. Stock itself lives in the ledger
+    (in ml); this tracks how much is left in each open bottle so the bar knows
+    when to open the next one and can spot over-pouring."""
+
+    __tablename__ = "open_bottles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), index=True)
+    size_ml: Mapped[Decimal] = mapped_column(QTY)
+    remaining_ml: Mapped[Decimal] = mapped_column(QTY)
+    status: Mapped[str] = mapped_column(String(10), default="open")  # open | finished
+    opened_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    finished_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    note: Mapped[str] = mapped_column(String(200), default="")
+
+    item: Mapped[Item] = relationship(lazy="selectin")
+    opener: Mapped[User | None] = relationship(foreign_keys=[opened_by], lazy="selectin")
+
+    __table_args__ = (
+        CheckConstraint("status IN ('open', 'finished')", name="status"),
+        CheckConstraint("remaining_ml >= 0", name="remaining_non_negative"),
+        Index("ix_open_bottles_item_status", "item_id", "status"),
     )

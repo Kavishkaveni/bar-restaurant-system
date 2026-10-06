@@ -123,6 +123,9 @@ class OrderLine(Base):
     unit_price: Mapped[Decimal] = mapped_column(MONEY)
     deduct_per_unit: Mapped[Decimal] = mapped_column(QTY)  # base units per 1 qty
     note: Mapped[str] = mapped_column(String(200), default="")
+    # Kitchen items (food) go new -> preparing -> ready -> served; None = not for the kitchen.
+    kitchen_status: Mapped[str | None] = mapped_column(String(12))
+    kitchen_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cost_total: Mapped[Decimal] = mapped_column(MONEY, default=0)  # set when paid
     added_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -130,7 +133,14 @@ class OrderLine(Base):
     order: Mapped[Order] = relationship(back_populates="lines")
     item: Mapped[Item] = relationship(lazy="selectin")
 
-    __table_args__ = (CheckConstraint("qty > 0", name="qty_positive"),)
+    __table_args__ = (
+        CheckConstraint("qty > 0", name="qty_positive"),
+        CheckConstraint(
+            "kitchen_status IS NULL OR kitchen_status IN ('new', 'preparing', 'ready', 'served')",
+            name="kitchen_status",
+        ),
+        Index("ix_order_lines_kitchen_status", "kitchen_status"),
+    )
 
     @property
     def line_total(self) -> Decimal:

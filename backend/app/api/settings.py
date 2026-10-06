@@ -22,6 +22,7 @@ class BusinessSettings(BaseModel):
     tax_percent: float = Field(default=0, ge=0, le=100)
     service_charge_percent: float = Field(default=0, ge=0, le=100)
     receipt_footer: str = Field(default="", max_length=300)
+    overhead_percent: float = Field(default=0, ge=0, le=100)
 
 
 async def load_settings(db: DB) -> dict[str, Any]:

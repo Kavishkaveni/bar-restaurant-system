@@ -68,4 +68,6 @@ DEFAULT_SETTINGS: dict[str, object] = {
     "tax_percent": 0,
     "service_charge_percent": 0,
     "receipt_footer": "Thank you! Please come again.",
+    # Gas, electricity etc. added on top of ingredient cost when showing dish margins.
+    "overhead_percent": 0,
 }

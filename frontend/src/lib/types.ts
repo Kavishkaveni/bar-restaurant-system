@@ -1,6 +1,9 @@
 export type RoleBrief = { id: number; name: string; label: string };
 
-export type Role = RoleBrief & { is_system: boolean; permission_names: string[] };
+export type Role = RoleBrief & {
+  is_system: boolean;
+  permission_names: string[];
+};
 
 export type User = {
   id: number;
@@ -32,6 +35,7 @@ export type BusinessSettings = {
   tax_percent: number;
   service_charge_percent: number;
   receipt_footer: string;
+  overhead_percent: number;
 };
 
 export type AuditEntry = {
@@ -46,14 +50,25 @@ export type AuditEntry = {
   created_at: string;
 };
 
-export type AuditPage = { items: AuditEntry[]; total: number; page: number; page_size: number };
+export type AuditPage = {
+  items: AuditEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+};
 
 // ---- Phase 2: catalogue, stock, purchasing ----------------------------------
 
 export type Module = "bar" | "sundry" | "food" | "other";
 export type BaseUnit = "ml" | "g" | "piece";
 
-export type Category = { id: number; name: string; module: Module; is_active: boolean; item_count: number };
+export type Category = {
+  id: number;
+  name: string;
+  module: Module;
+  is_active: boolean;
+  item_count: number;
+};
 
 export type SupplierBrief = { id: number; name: string };
 
@@ -68,11 +83,14 @@ export type Supplier = SupplierBrief & {
   purchase_count: number;
 };
 
+export type ItemKind = "final_product" | "build_assembly";
+
 export type Item = {
   id: number;
   name: string;
   category: { id: number; name: string; module: Module };
-  kind: string;
+  kind: ItemKind;
+  batch_yield: number | null;
   base_unit: BaseUnit;
   unit_size: number;
   stock_unit: string;
@@ -106,7 +124,12 @@ export type Movement = {
   balance_after: number;
 };
 
-export type Page<T> = { items: T[]; total: number; page: number; page_size: number };
+export type Page<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+};
 
 export type PurchaseLine = {
   id: number;
@@ -137,7 +160,13 @@ export type Purchase = {
 export type OrderType = "table" | "bar" | "takeaway" | "tab";
 export type PaymentMethod = "cash" | "card" | "bank_transfer" | "qr";
 
-export type OpenOrderBrief = { id: number; total: number; item_count: number; opened_at: string; printed: boolean };
+export type OpenOrderBrief = {
+  id: number;
+  total: number;
+  item_count: number;
+  opened_at: string;
+  printed: boolean;
+};
 
 export type DiningTable = {
   id: number;
@@ -148,7 +177,14 @@ export type DiningTable = {
   open_orders: OpenOrderBrief[];
 };
 
-export type SellOption = { id: number; item_id: number; name: string; deduct_qty: number; price: number; sort_order: number };
+export type SellOption = {
+  id: number;
+  item_id: number;
+  name: string;
+  deduct_qty: number;
+  price: number;
+  sort_order: number;
+};
 
 export type MenuOption = { id: number | null; name: string; price: number };
 export type MenuItem = {
@@ -161,7 +197,10 @@ export type MenuItem = {
   out_of_stock: boolean;
   options: MenuOption[];
 };
-export type Menu = { categories: { id: number; name: string; module: Module }[]; items: MenuItem[] };
+export type Menu = {
+  categories: { id: number; name: string; module: Module }[];
+  items: MenuItem[];
+};
 
 export type OrderLine = {
   id: number;
@@ -172,8 +211,11 @@ export type OrderLine = {
   unit_price: number;
   line_total: number;
   note: string;
+  kitchen_status: KitchenStatus | null;
   created_at: string;
 };
+
+export type KitchenStatus = "new" | "preparing" | "ready" | "served";
 
 export type OrderPayment = {
   id: number;
@@ -231,3 +273,76 @@ export type BillsPage = Page<Order> & {
 };
 
 export type Approval = { user_id: number; pin: string };
+
+// ---- Phase 4: recipes, open bottles, kitchen ---------------------------------------
+
+export type RecipeLineOut = {
+  id: number;
+  component: {
+    id: number;
+    name: string;
+    base_unit: BaseUnit;
+    unit_size: number;
+    stock_unit: string;
+    track_stock: boolean;
+  };
+  qty: number;
+  qty_display: string;
+  cost: number;
+  on_hand_display: string;
+};
+
+export type Recipe = {
+  item_id: number;
+  kind: ItemKind;
+  lines: RecipeLineOut[];
+  ingredient_cost: number;
+  overhead_percent: number;
+  total_cost: number;
+  selling_price: number | null;
+  margin: number | null;
+  margin_percent: number | null;
+  batch_yield: number | null;
+  batch_yield_display: string | null;
+  portions_available: number | null;
+};
+
+export type OpenBottle = {
+  id: number;
+  size_ml: number;
+  remaining_ml: number;
+  opened_at: string;
+  opener: { id: number; name: string } | null;
+  note: string;
+};
+
+export type BottleItem = {
+  item_id: number;
+  name: string;
+  category: string;
+  unit_size: number;
+  sealed: number;
+  on_hand_display: string;
+  smallest_pour: number | null;
+  running_low: boolean;
+  open: OpenBottle[];
+};
+
+export type TicketLine = {
+  id: number;
+  name: string;
+  qty: number;
+  note: string;
+  kitchen_status: KitchenStatus;
+  created_at: string;
+  kitchen_updated_at: string | null;
+};
+
+export type Ticket = {
+  order_id: number;
+  label: string;
+  order_note: string;
+  waiter: string | null;
+  lines: TicketLine[];
+  oldest: string;
+};

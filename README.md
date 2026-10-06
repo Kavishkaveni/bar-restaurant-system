@@ -4,10 +4,32 @@ One responsive website that runs a single-outlet bar, restaurant and rooms
 business: billing, liquor and food stock, rooms, purchasing, expenses, reports
 and AI. Staff use it on a counter PC or tablet; the owner uses it on a phone.
 
-Phases 1 to 3 of 8 are done: the foundation (login, staff, roles, settings,
-audit log, layout), inventory and purchasing, and the POS.
+Phases 1 to 4 of 8 are done: the foundation (login, staff, roles, settings,
+audit log, layout), inventory and purchasing, the POS, and the bar and kitchen
+side (pegs from open bottles, recipes, kitchen screen).
 
 ## What works now
+
+### Bar pegs, recipes and kitchen (phase 4)
+
+- **Pegs**: on a bottle item, add a selling option smaller than the bottle
+  (quick-fill buttons for 30, 60 and 100 ml). Each peg pours from the oldest
+  open bottle; when it runs out, the next sealed bottle opens by itself and the
+  pour carries over. Voiding a bill puts the ml back.
+- **Open bottles** (Inventory tab): ml left in each open bottle, sealed count,
+  a warning when almost out. "Empty" closes a bottle and records anything the
+  system still shows in it as wastage, so over-pouring becomes visible.
+- **Dishes and recipes**: add an item as "Dish made to order" with a menu
+  price, then its recipe per plate with as many ingredients as needed (grams,
+  ml or pieces). Shows ingredient cost, cost with kitchen overhead (Settings),
+  profit per plate and how many plates the stock allows. Selling a dish takes
+  the ingredients from stock when the bill is paid.
+- **Batch items** like a Spice Mix: a stocked item with a batch recipe; "Make a
+  batch" takes the ingredients and adds the batch to stock at its real cost.
+- **Kitchen screen**: food on any bill appears within 5 seconds, grouped by
+  table, with a chime for new orders and a waiting timer. Cooks tap Start,
+  Ready and Served; the bill on the POS shows the same status. Removing food
+  the kitchen has started needs a manager's PIN.
 
 ### POS and billing (phase 3)
 
@@ -178,8 +200,8 @@ docker-compose.yml
 | 1 | Foundation: login, roles, staff, settings, audit log, layout | Done |
 | 2 | Items, suppliers, purchases, stock ledger | Done |
 | 3 | POS and billing (go live for bar and sundries) | Done |
-| 4 | Bar pegs, open bottles, recipes, kitchen screen | Next |
-| 5 | Rooms, bookings, room bills, housekeeping | |
+| 4 | Bar pegs, open bottles, recipes, kitchen screen | Done |
+| 5 | Rooms, bookings, room bills, housekeeping | Next |
 | 6 | Expenses, shifts, reports | |
 | 7 | Admin dashboard with live charts | |
 | 8 | AI features, backups, deployment | |

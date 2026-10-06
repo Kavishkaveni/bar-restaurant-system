@@ -7,8 +7,8 @@ from decimal import ROUND_HALF_UP, Decimal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Order, StockMovement, User
-from app.services import stock
+from app.models import Item, Order, StockMovement, User
+from app.services import bottles, recipes, stock
 
 CENT = Decimal("0.01")
 ZERO = Decimal("0")
@@ -50,22 +50,46 @@ def totals(order: Order) -> Totals:
 
 
 async def close(db: AsyncSession, order: Order, user: User) -> None:
-    """Mark a fully paid bill as paid, store its totals and take its stock out."""
+    """Mark a fully paid bill as paid, store its totals and take its stock out.
+
+    - A stocked item sold whole or by option: its own stock goes down.
+    - A peg (part of a bottle): poured from open bottles, then stock goes down.
+    - A dish (recipe): each tracked ingredient goes down by recipe x qty.
+    Cost is recorded per line at today's average cost, for profit reports."""
     t = totals(order)
+
+    # Work out every base-unit deduction first, grouped per item, so pegs of
+    # the same liquor on several lines are poured from bottles in one go.
+    takes: dict[int, tuple[Item, Decimal]] = {}
+    pours: dict[int, tuple[Item, Decimal]] = {}
     cost_total = ZERO
     for line in order.lines:
         item = line.item
-        qty_base = line.qty * line.deduct_per_unit
-        if item.track_stock:
-            unit_cost = item.avg_cost
-            stock.add_movement(
-                db, item=item, qty=-qty_base, type="sale", user=user, unit_cost=unit_cost,
-                ref_type="order", ref_id=order.id, reason=line.name,
-            )
+        if item.kind == "build_assembly":
+            lines = await recipes.lines_of(db, item.id)
+            line.cost_total = money(line.qty * recipes.cost_of(lines))
+            for r in lines:
+                if r.component.track_stock:
+                    prev = takes.get(r.component_id, (r.component, ZERO))[1]
+                    takes[r.component_id] = (r.component, prev + line.qty * r.qty)
         else:
-            unit_cost = item.cost_price / item.unit_size  # untracked: last purchase price
-        line.cost_total = money(qty_base * unit_cost)
+            qty_base = line.qty * line.deduct_per_unit
+            line.cost_total = money(qty_base * recipes.unit_cost(item))
+            if item.track_stock:
+                prev = takes.get(item.id, (item, ZERO))[1]
+                takes[item.id] = (item, prev + qty_base)
+                if bottles.pours_from_bottle(item, line.deduct_per_unit):
+                    prev = pours.get(item.id, (item, ZERO))[1]
+                    pours[item.id] = (item, prev + qty_base)
         cost_total += line.cost_total
+
+    for item, ml in pours.values():
+        await bottles.pour(db, item, ml, user)
+    for item, qty in takes.values():
+        stock.add_movement(
+            db, item=item, qty=-qty, type="sale", user=user, unit_cost=recipes.unit_cost(item),
+            ref_type="order", ref_id=order.id, reason=f"Bill #{order.id}",
+        )
 
     order.subtotal = t.subtotal
     order.discount_amount = t.discount
@@ -79,15 +103,21 @@ async def close(db: AsyncSession, order: Order, user: User) -> None:
 
 
 async def reverse_stock(db: AsyncSession, order: Order, user: User, reason: str) -> None:
-    """Put back the stock a paid bill took out, at the same cost."""
-    sales = await db.scalars(
-        select(StockMovement).where(
-            StockMovement.ref_type == "order", StockMovement.ref_id == order.id, StockMovement.type == "sale"
+    """Put back the stock a paid bill took out (items and recipe ingredients),
+    at the same cost, and pour pegs back into the open bottle."""
+    sales = list(
+        await db.scalars(
+            select(StockMovement).where(
+                StockMovement.ref_type == "order", StockMovement.ref_id == order.id, StockMovement.type == "sale"
+            )
         )
     )
-    items = {line.item_id: line.item for line in order.lines}
     for m in sales:
+        item = await db.get(Item, m.item_id)
         stock.add_movement(
-            db, item=items[m.item_id], qty=-m.qty, type="void_reversal", user=user, unit_cost=m.unit_cost,
+            db, item=item, qty=-m.qty, type="void_reversal", user=user, unit_cost=m.unit_cost,
             ref_type="order", ref_id=order.id, reason=f"Bill #{order.id} voided: {reason}",
         )
+    for line in order.lines:
+        if line.item.kind != "build_assembly" and bottles.pours_from_bottle(line.item, line.deduct_per_unit):
+            await bottles.put_back(db, line.item, line.qty * line.deduct_per_unit)

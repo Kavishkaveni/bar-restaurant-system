@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, or_, select
 
 from app.api.deps import DB, STOCK_VIEWERS, require, require_any
-from app.models import Category, Item, StockMovement, Supplier, User
+from app.models import Category, Item, RecipeLine, StockMovement, Supplier, User
 from app.schemas.inventory import CategoryIn, CategoryOut, ItemIn, ItemOut, Module
 from app.services import audit, stock
 
@@ -111,7 +111,10 @@ async def with_stock(db: DB, items: list[Item]) -> list[ItemOut]:
             ItemOut.model_validate(item).model_copy(
                 update={
                     "on_hand": qty,
-                    "on_hand_display": stock.format_qty(item, qty) if item.track_stock else "Not tracked",
+                    "on_hand_display": (
+                        "Made to order" if item.kind == "build_assembly"
+                        else stock.format_qty(item, qty) if item.track_stock else "Not tracked"
+                    ),
                     "stock_value": (qty * item.avg_cost).quantize(Decimal("0.01")) if qty > 0 else Decimal(0),
                     "is_low": item.track_stock and qty < item.reorder_level * item.unit_size,
                     "has_movements": item.id in moved,
@@ -155,6 +158,7 @@ def _snapshot(item: Item) -> dict:
         "track_stock": item.track_stock,
         "supplier_id": item.supplier_id,
         "sku": item.sku,
+        "kind": item.kind,
     }
 
 
@@ -189,7 +193,7 @@ async def create_item(body: ItemIn, actor: Manager, db: DB, request: Request):
     await _check_refs(db, body)
     if await _name_taken(db, body.name):
         raise HTTPException(status.HTTP_409_CONFLICT, f'An item called "{body.name}" already exists')
-    item = Item(**body.model_dump())
+    item = Item(**body.normalised())
     db.add(item)
     await db.flush()
     await db.refresh(item, ["category", "supplier"])
@@ -216,7 +220,10 @@ async def update_item(item_id: int, body: ItemIn, actor: Manager, db: DB, reques
     if await _name_taken(db, body.name, exclude_id=item.id):
         raise HTTPException(status.HTTP_409_CONFLICT, f'An item called "{body.name}" already exists')
 
-    unit_changed = body.base_unit != item.base_unit or body.unit_size != item.unit_size
+    data = body.normalised()
+    unit_changed = (
+        data["base_unit"] != item.base_unit or data["unit_size"] != item.unit_size or data["kind"] != item.kind
+    )
     if unit_changed and await stock.has_movements(db, item.id):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
@@ -225,7 +232,7 @@ async def update_item(item_id: int, body: ItemIn, actor: Manager, db: DB, reques
         )
 
     before = _snapshot(item)
-    for key, value in body.model_dump().items():
+    for key, value in data.items():
         setattr(item, key, value)
     await db.flush()
     await db.refresh(item, ["category", "supplier"])
@@ -241,6 +248,17 @@ async def delete_item(item_id: int, actor: Manager, db: DB, request: Request):
     item = await db.get(Item, item_id)
     if not item or not item.is_active:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Item not found")
+    used_in = list(
+        await db.scalars(
+            select(Item.name).join(RecipeLine, RecipeLine.item_id == Item.id)
+            .where(RecipeLine.component_id == item.id, Item.is_active.is_(True))
+        )
+    )
+    if used_in:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"{item.name} is an ingredient of {', '.join(used_in)}. Remove it from those recipes first.",
+        )
     item.is_active = False
     audit.record(db, user=actor, action="delete", entity="item", entity_id=item.id,
                  before={"name": item.name}, request=request)

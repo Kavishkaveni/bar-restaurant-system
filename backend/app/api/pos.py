@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 
 from app.api.deps import DB, STOCK_VIEWERS, require, require_any
-from app.models import Category, DiningTable, Item, Order, SellOption, User
+from app.models import Category, DiningTable, Item, Order, RecipeLine, SellOption, User
 from app.schemas.pos import (
     Menu,
     MenuCategory,
@@ -19,7 +19,7 @@ from app.schemas.pos import (
     TableIn,
     TableOut,
 )
-from app.services import audit, billing, stock
+from app.services import audit, billing, recipes, stock
 
 router = APIRouter(tags=["pos"])
 
@@ -183,7 +183,13 @@ async def menu(_: PosUser, db: DB):
     for o in options:
         by_item.setdefault(o.item_id, []).append(o)
 
-    on_hand = await stock.on_hand(db, [i.id for i in items])
+    dish_ids = [i.id for i in items if i.kind == "build_assembly"]
+    recipe_rows = list(await db.scalars(select(RecipeLine).where(RecipeLine.item_id.in_(dish_ids)))) if dish_ids else []
+    recipe_of: dict[int, list[RecipeLine]] = {}
+    for r in recipe_rows:
+        recipe_of.setdefault(r.item_id, []).append(r)
+
+    on_hand = await stock.on_hand(db, [i.id for i in items] + [r.component_id for r in recipe_rows])
     out: list[MenuItem] = []
     used_categories: dict[int, Category] = {}
     for item in items:
@@ -193,8 +199,15 @@ async def menu(_: PosUser, db: DB):
         opts += [MenuOption(id=o.id, name=o.name, price=o.price) for o in by_item.get(item.id, [])]
         if not opts:
             continue  # ingredients and supplies that aren't sold
-        qty = on_hand[item.id]
-        smallest = min([item.unit_size] + [o.deduct_qty for o in by_item.get(item.id, [])])
+        if item.kind == "build_assembly":
+            portions = recipes.portions_available(recipe_of.get(item.id, []), on_hand)
+            display = f"{int(portions)} portions" if portions is not None else ""
+            out_of_stock = portions is not None and portions < 1
+        else:
+            qty = on_hand[item.id]
+            smallest = min([item.unit_size] + [o.deduct_qty for o in by_item.get(item.id, [])])
+            display = stock.format_qty(item, qty) if item.track_stock else ""
+            out_of_stock = item.track_stock and qty < smallest
         out.append(
             MenuItem(
                 id=item.id,
@@ -202,8 +215,8 @@ async def menu(_: PosUser, db: DB):
                 category_id=item.category_id,
                 stock_unit=item.stock_unit,
                 track_stock=item.track_stock,
-                on_hand_display=stock.format_qty(item, qty) if item.track_stock else "",
-                out_of_stock=item.track_stock and qty < smallest,
+                on_hand_display=display,
+                out_of_stock=out_of_stock,
                 options=opts,
             )
         )

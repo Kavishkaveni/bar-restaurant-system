@@ -4,10 +4,36 @@ One responsive website that runs a single-outlet bar, restaurant and rooms
 business: billing, liquor and food stock, rooms, purchasing, expenses, reports
 and AI. Staff use it on a counter PC or tablet; the owner uses it on a phone.
 
-Phases 1 and 2 of 8 are done: the foundation (login, staff, roles, settings,
-audit log, layout) and inventory and purchasing.
+Phases 1 to 3 of 8 are done: the foundation (login, staff, roles, settings,
+audit log, layout), inventory and purchasing, and the POS.
 
 ## What works now
+
+### POS and billing (phase 3)
+
+- **Floor screen**: tables grouped by area, free or occupied with the running
+  total and how long it's been open. Plus quick **Bar sale**, named **Tabs**
+  that stay open across rounds, and **Takeaway**.
+- **Order screen** built for touch: category chips, big item buttons, search.
+  Items sold more than one way (a pack or a single cigarette) ask which.
+- **Selling options** per item (Inventory, open an item, "How it's sold"):
+  e.g. "Single" takes 1 stick from a pack of 20.
+- **Bill**: quantities, discount (percent or amount, with a reason), service
+  charge and tax from Settings. Rates are copied when the bill opens.
+- **Split** items to a new bill, **merge** two bills, **move** to another table,
+  customer name and notes.
+- **Payment**: cash (with change and quick note buttons), card, bank transfer,
+  QR, several payments on one bill, split equally, tips kept separate.
+- **Stock is deducted when the bill is fully paid**, at the item's average cost,
+  so profit can be reported later. **Voiding a paid bill puts the stock back.**
+- **Manager approval with PIN**: discounts, voids, removing service charge, and
+  taking items off a bill after it was printed or part-paid. A manager picks
+  their name and enters their PIN on the same screen. Every approval is in the
+  audit log with who asked and who approved.
+- **80 mm receipts** from the browser: BILL before payment, RECEIPT after,
+  reprints marked COPY.
+- **Today's bills**: sales total, bills, totals by payment method, tips, voids,
+  any past day.
 
 ### Inventory and purchases (phase 2)
 
@@ -93,9 +119,10 @@ docker compose exec api pytest        # with Docker
 cd backend && pytest                  # without Docker
 ```
 
-50 tests cover login, PIN lockout, token refresh, password change, permission
+71 tests cover login, PIN lockout, token refresh, password change, permission
 checks, the last-owner rule, settings, the audit log, items, purchases, average
-cost, cancelling purchases, opening stock, wastage and counts. Tests only ever run
+cost, cancelling purchases, opening stock, wastage, counts, bill totals,
+payments, stock deduction, voids, manager approvals, split and merge. Tests only ever run
 against a database whose name ends in `_test` and refuse to start otherwise,
 because they drop and recreate every table.
 
@@ -150,8 +177,8 @@ docker-compose.yml
 | --- | --- | --- |
 | 1 | Foundation: login, roles, staff, settings, audit log, layout | Done |
 | 2 | Items, suppliers, purchases, stock ledger | Done |
-| 3 | POS and billing (go live for bar and sundries) | Next |
-| 4 | Bar pegs, open bottles, recipes, kitchen screen | |
+| 3 | POS and billing (go live for bar and sundries) | Done |
+| 4 | Bar pegs, open bottles, recipes, kitchen screen | Next |
 | 5 | Rooms, bookings, room bills, housekeeping | |
 | 6 | Expenses, shifts, reports | |
 | 7 | Admin dashboard with live charts | |

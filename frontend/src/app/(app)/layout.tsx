@@ -5,6 +5,7 @@ import { useEffect } from "react";
 
 import { AppShell } from "@/components/AppShell";
 import { Spinner } from "@/components/ui";
+import { ApprovalProvider } from "@/lib/approval";
 import { useAuth } from "@/lib/auth";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -22,5 +23,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  return <AppShell>{children}</AppShell>;
+  return (
+    <ApprovalProvider>
+      <AppShell>{children}</AppShell>
+    </ApprovalProvider>
+  );
 }

@@ -1,12 +1,12 @@
 from datetime import date, datetime, time, timedelta
 from typing import Annotated
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 
 from app.api.deps import DB, require
 from app.api.settings import load_settings
+from app.core.timeutil import business_tz
 from app.models import AuditLog, User
 from app.schemas.audit import AuditPage
 
@@ -33,7 +33,7 @@ async def list_audit(
     if action:
         filters.append(AuditLog.action == action)
     # Dates are the business's local days, not UTC days.
-    tz = ZoneInfo((await load_settings(db))["timezone"])
+    tz = business_tz((await load_settings(db))["timezone"])
     if date_from:
         filters.append(AuditLog.created_at >= datetime.combine(date_from, time.min, tz))
     if date_to:

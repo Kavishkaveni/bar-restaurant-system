@@ -1,11 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import jwt
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 
 from app.api.deps import DB, CurrentUser, permissions_of
-from app.core.config import get_settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -24,7 +23,7 @@ from app.schemas.auth import (
     TokenPair,
 )
 from app.schemas.user import StaffTile, UserOut
-from app.services import audit
+from app.services import audit, pins
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -57,34 +56,8 @@ async def login(body: LoginRequest, db: DB, request: Request):
 
 @router.post("/pin-login", response_model=LoginResponse)
 async def pin_login(body: PinLoginRequest, db: DB, request: Request):
-    settings = get_settings()
-    user = await db.get(User, body.user_id)
-    if not user or not user.is_active or not user.has_pin:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong PIN")
-
-    now = datetime.now(timezone.utc)
-    if user.pin_locked_until and user.pin_locked_until > now:
-        minutes = int((user.pin_locked_until - now).total_seconds() // 60) + 1
-        raise HTTPException(
-            status.HTTP_423_LOCKED,
-            f"Too many wrong PINs. Try again in {minutes} min or log in with your password.",
-        )
-
-    if not verify_secret(body.pin, user.pin_hash):
-        user.failed_pin_attempts += 1
-        if user.failed_pin_attempts >= settings.pin_max_attempts:
-            user.pin_locked_until = now + timedelta(minutes=settings.pin_lock_minutes)
-            user.failed_pin_attempts = 0
-            audit.record(
-                db, user=user, action="pin_locked", entity="user", entity_id=user.id,
-                request=request,
-            )
-        await db.commit()
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong PIN")
-
-    user.failed_pin_attempts = 0
-    user.pin_locked_until = None
-    user.last_login_at = now
+    user = await pins.check_pin(db, await db.get(User, body.user_id), body.pin, request)
+    user.last_login_at = datetime.now(timezone.utc)
     audit.record(db, user=user, action="pin_login", entity="user", entity_id=user.id, request=request)
     await db.commit()
     return _login_response(user, via_pin=True)

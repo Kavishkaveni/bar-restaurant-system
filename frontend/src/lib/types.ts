@@ -131,3 +131,103 @@ export type Purchase = {
   created_at: string;
   lines: PurchaseLine[];
 };
+
+// ---- Phase 3: POS -------------------------------------------------------------
+
+export type OrderType = "table" | "bar" | "takeaway" | "tab";
+export type PaymentMethod = "cash" | "card" | "bank_transfer" | "qr";
+
+export type OpenOrderBrief = { id: number; total: number; item_count: number; opened_at: string; printed: boolean };
+
+export type DiningTable = {
+  id: number;
+  name: string;
+  area: string;
+  seats: number;
+  sort_order: number;
+  open_orders: OpenOrderBrief[];
+};
+
+export type SellOption = { id: number; item_id: number; name: string; deduct_qty: number; price: number; sort_order: number };
+
+export type MenuOption = { id: number | null; name: string; price: number };
+export type MenuItem = {
+  id: number;
+  name: string;
+  category_id: number;
+  stock_unit: string;
+  track_stock: boolean;
+  on_hand_display: string;
+  out_of_stock: boolean;
+  options: MenuOption[];
+};
+export type Menu = { categories: { id: number; name: string; module: Module }[]; items: MenuItem[] };
+
+export type OrderLine = {
+  id: number;
+  item_id: number;
+  option_id: number | null;
+  name: string;
+  qty: number;
+  unit_price: number;
+  line_total: number;
+  note: string;
+  created_at: string;
+};
+
+export type OrderPayment = {
+  id: number;
+  method: PaymentMethod;
+  amount: number;
+  tendered: number | null;
+  change: number;
+  tip: number;
+  reference: string;
+  user: { id: number; name: string } | null;
+  created_at: string;
+};
+
+export type Order = {
+  id: number;
+  type: OrderType;
+  label: string;
+  table: { id: number; name: string } | null;
+  customer_name: string;
+  note: string;
+  status: "open" | "paid" | "void" | "merged";
+  service_charge_percent: number;
+  tax_percent: number;
+  discount_type: "percent" | "amount" | null;
+  discount_value: number;
+  discount_reason: string;
+  subtotal: number;
+  discount: number;
+  service_charge: number;
+  tax: number;
+  total: number;
+  paid: number;
+  due: number;
+  tips: number;
+  item_count: number;
+  printed_count: number;
+  receipt_count: number;
+  opener: { id: number; name: string } | null;
+  closer: { id: number; name: string } | null;
+  created_at: string;
+  closed_at: string | null;
+  void_reason: string;
+  merged_into: number | null;
+  lines: OrderLine[];
+  payments: OrderPayment[];
+};
+
+export type BillsPage = Page<Order> & {
+  day: string;
+  sales_total: number;
+  bill_count: number;
+  tips_total: number;
+  by_method: { method: PaymentMethod; amount: number; count: number }[];
+  void_count: number;
+};
+
+export type Approval = { user_id: number; pin: string };

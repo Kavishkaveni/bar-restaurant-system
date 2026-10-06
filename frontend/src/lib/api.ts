@@ -77,7 +77,7 @@ export async function api<T>(path: string, init: RequestInit & { json?: unknown 
   try {
     res = await send();
   } catch {
-    throw new ApiError(0, "Cannot reach the server. Check the internet connection.");
+    throw new ApiError(0, "Cannot reach the server. Check that the backend is running and the internet is connected.");
   }
 
   const isLoginCall = ["/auth/login", "/auth/pin-login", "/auth/refresh"].includes(path);

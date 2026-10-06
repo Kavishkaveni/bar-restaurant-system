@@ -29,7 +29,7 @@ export type NavItem = {
 
 export const NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, anyOf: ["dashboard.view"], group: "Service", phase: 7, blurb: "Today's sales, profit and expenses as live charts." },
-  { href: "/pos", label: "POS", icon: ShoppingCart, anyOf: ["pos.order", "pos.room_service"], group: "Service", phase: 3, blurb: "Take orders, print bills and take payments." },
+  { href: "/pos", label: "POS", icon: ShoppingCart, anyOf: ["pos.order", "pos.room_service"], group: "Service", blurb: "Take orders, print bills and take payments." },
   { href: "/kitchen", label: "Kitchen", icon: ChefHat, anyOf: ["kitchen.view"], group: "Service", phase: 4, blurb: "Food orders appear here live for the cooks." },
   { href: "/rooms", label: "Rooms", icon: BedDouble, anyOf: ["rooms.manage"], group: "Service", phase: 5, blurb: "Bookings, check-in, check-out and room bills." },
   { href: "/inventory", label: "Inventory", icon: Package, anyOf: ["catalogue.manage", "stock.count", "stock.wastage", "bar.open_bottle"], group: "Back office", blurb: "Items, stock levels, counts and wastage." },

@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { ChevronLeft, ChevronRight, ClipboardCheck, PackagePlus, Pencil, Trash2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
+import { SellOptions } from "@/components/inventory/SellOptions";
 import { QtyInput } from "@/components/QtyInput";
 import { Badge, Button, ErrorText, Field, Input, Modal, Spinner, formatDateTime } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
@@ -163,6 +164,8 @@ function Body({ itemId, onClose, onEdit }: { itemId: number; onClose: () => void
           </>
         )}
       </div>
+
+      <SellOptions item={it} />
 
       {it.track_stock && (
         <section>

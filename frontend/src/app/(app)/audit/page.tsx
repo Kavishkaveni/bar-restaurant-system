@@ -24,6 +24,16 @@ const ACTION_WORDS: Record<string, string> = {
   stock_count: "counted",
   payment: "recorded a payment on",
   cancel: "cancelled",
+  open: "opened",
+  paid: "closed and took payment for",
+  void: "voided",
+  discount: "gave a discount on",
+  remove_discount: "removed the discount on",
+  remove_line: "removed an item from",
+  reduce_line: "reduced an item on",
+  reprint: "reprinted",
+  split: "split",
+  merge: "merged a bill into",
 };
 
 const ENTITY_WORDS: Record<string, string> = {
@@ -34,6 +44,9 @@ const ENTITY_WORDS: Record<string, string> = {
   item: "item",
   supplier: "supplier",
   purchase: "purchase from",
+  order: "bill",
+  table: "table",
+  sell_option: "selling option",
 };
 
 // Stock actions read better without the word "item": "counted Arrack".
@@ -117,6 +130,8 @@ function Audit() {
               <option value="category">Categories</option>
               <option value="supplier">Suppliers</option>
               <option value="purchase">Purchases</option>
+              <option value="order">Bills</option>
+              <option value="table">Tables</option>
             </Select>
           )}
         </Field>

@@ -7,3 +7,4 @@ pydantic[email]==2.*
 pydantic-settings==2.6.*
 bcrypt==4.2.*
 PyJWT==2.*
+tzdata>=2024.1  # time zones on Windows

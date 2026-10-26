@@ -8,8 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import (
+    assistant,
     audit_log,
     auth,
+    backups,
     bookings,
     bottles,
     catalogue,
@@ -30,7 +32,8 @@ from app.api import (
 )
 from app.core.config import get_settings
 from app.core.security import decode_token
-from app.services import live
+from app.db import SessionLocal
+from app.services import backup, live
 
 _cfg = get_settings()
 if _cfg.app_env == "production" and len(_cfg.jwt_secret) < 32:
@@ -40,7 +43,10 @@ if _cfg.app_env == "production" and len(_cfg.jwt_secret) < 32:
 async def lifespan(_: FastAPI):
     if get_settings().live_updates:
         await live.hub.start()
+    daily = asyncio.create_task(backup.run_daily(SessionLocal)) if get_settings().backups_enabled else None
     yield
+    if daily:
+        daily.cancel()
     await live.hub.stop()
 
 
@@ -105,6 +111,8 @@ api.include_router(bookings.router)
 api.include_router(money.router)
 api.include_router(reports.router)
 api.include_router(dashboard.router)
+api.include_router(assistant.router)
+api.include_router(backups.router)
 
 
 @api.websocket("/live")

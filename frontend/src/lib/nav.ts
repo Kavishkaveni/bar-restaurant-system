@@ -103,7 +103,6 @@ export const NAV: NavItem[] = [
     icon: Sparkles,
     anyOf: ["ai.use"],
     group: "Back office",
-    phase: 8,
     blurb: "Ask questions about the business in plain words.",
   },
   {

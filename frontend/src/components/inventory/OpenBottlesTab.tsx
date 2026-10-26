@@ -28,6 +28,7 @@ export function OpenBottlesTab() {
     queryKey: ["open-bottles"],
     queryFn: () => api<BottleItem[]>("/open-bottles"),
     refetchInterval: 30_000,
+    staleTime: 0,
   });
   const [finishing, setFinishing] = useState<{
     item: BottleItem;

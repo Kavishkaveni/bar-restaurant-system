@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     # Push "something changed" to open screens over WebSocket.
     live_updates: bool = True
 
+    # Daily database backups (see app/services/backup.py).
+    backups_enabled: bool = True
+    backup_dir: str = "backups"
+    backup_keep: int = 14
+    backup_time: str = "03:00"  # business time zone
+    pg_dump_path: str = "pg_dump"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

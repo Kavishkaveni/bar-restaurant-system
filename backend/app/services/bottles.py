@@ -60,10 +60,60 @@ async def open_new(db: AsyncSession, item: Item, user: User | None, note: str = 
     return bottle
 
 
+async def fit_to_stock(db: AsyncSession, item: Item) -> bool:
+    """Open bottles can never hold more than the stock. When stock went down
+    another way (a whole bottle sold, wastage, a stock count) and the open
+    bottles now add up to more, take the difference off them: first bottles
+    that were opened but never poured from, then the newest. Returns True if
+    anything changed."""
+    on_hand = max((await stock.on_hand(db, [item.id]))[item.id], ZERO)
+    open_list = await open_bottles(db, item.id)
+    extra = sum((b.remaining_ml for b in open_list), ZERO) - on_hand
+    if extra < 0:
+        return await _add_loose(db, item, open_list, (-extra) % item.unit_size)
+    if extra == 0:
+        return False
+    untouched = [b for b in reversed(open_list) if b.remaining_ml >= b.size_ml]
+    used = [b for b in reversed(open_list) if b.remaining_ml < b.size_ml]
+    now = datetime.now(timezone.utc)
+    for bottle in untouched + used:
+        if extra <= 0:
+            break
+        take = min(bottle.remaining_ml, extra)
+        bottle.remaining_ml -= take
+        extra -= take
+        if bottle.remaining_ml == 0:
+            bottle.status = "finished"
+            bottle.finished_at = now
+            bottle.note = ((bottle.note + " · " if bottle.note else "") + "Closed: stock went down another way")[:200]
+    await db.flush()
+    return True
+
+
+async def _add_loose(db: AsyncSession, item: Item, open_list: list[OpenBottle], loose: Decimal) -> bool:
+    """Stock that isn't whole sealed bottles (e.g. a count of 1 bottle + 250 ml)
+    must sit in an open bottle: adjust the newest one, or open one."""
+    if loose <= 0:
+        return False
+    if not open_list:
+        db.add(OpenBottle(item_id=item.id, size_ml=item.unit_size, remaining_ml=loose,
+                          note="Part bottle in stock"))
+    else:
+        bottle = open_list[-1]
+        new = bottle.remaining_ml + loose
+        bottle.remaining_ml = new - item.unit_size if new > bottle.size_ml else new
+        if bottle.remaining_ml == 0:
+            bottle.status = "finished"
+            bottle.finished_at = datetime.now(timezone.utc)
+    await db.flush()
+    return True
+
+
 async def pour(db: AsyncSession, item: Item, ml: Decimal, user: User | None) -> Decimal:
     """Take ml from open bottles, oldest first, opening sealed bottles as
     needed. Call BEFORE the sale's stock movement is added. Returns ml that
     couldn't be poured from any bottle (stock already ran out)."""
+    await fit_to_stock(db, item)
     on_hand = (await stock.on_hand(db, [item.id]))[item.id]
     need = ml
     bottles = await open_bottles(db, item.id)

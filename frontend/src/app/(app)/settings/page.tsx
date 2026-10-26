@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { Guard } from "@/components/Guard";
+import { AISettings } from "@/components/settings/AISettings";
+import { BackupSettings } from "@/components/settings/BackupSettings";
 import {
   Button,
   ErrorText,
@@ -252,6 +254,8 @@ function Settings() {
           </div>
         </Panel>
       </form>
+      <AISettings />
+      <BackupSettings />
     </>
   );
 }

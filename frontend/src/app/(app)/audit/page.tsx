@@ -58,6 +58,7 @@ const ACTION_WORDS: Record<string, string> = {
   close: "closed",
   cash_in: "put cash into",
   cash_out: "took cash out of",
+  backup: "made a backup of",
 };
 
 const ENTITY_WORDS: Record<string, string> = {

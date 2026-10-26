@@ -26,7 +26,10 @@ services:
       - "6379:6379"
 
   api:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        DEV: "true"
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://barpos:barpos@db:5432/barpos

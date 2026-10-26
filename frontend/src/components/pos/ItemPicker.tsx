@@ -93,10 +93,14 @@ export function ItemPicker({ menu, onPick, busy }: { menu: Menu; onPick: (item: 
                 onPick(choosing, o);
                 setChoosing(null);
               }}
-              className="flex h-20 flex-col justify-center rounded-xl border-2 border-line px-4 text-left hover:border-amber-500 active:bg-amber-100"
+              disabled={o.out_of_stock}
+              className="flex h-20 flex-col justify-center rounded-xl border-2 border-line px-4 text-left hover:border-amber-500 active:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line"
             >
               <span className="font-semibold">{o.name}</span>
-              <span className="text-sm text-ink-soft tabular">{money(o.price)}</span>
+              <span className="text-sm text-ink-soft tabular">
+                {money(o.price)}
+                {o.out_of_stock && <span className="ml-2 font-semibold text-danger">Not enough stock</span>}
+              </span>
             </button>
           ))}
         </div>

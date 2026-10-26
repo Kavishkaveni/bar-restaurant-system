@@ -19,6 +19,7 @@ const REFRESH: Record<string, string[][]> = {
     ["report"],
     ["items"],
     ["in-house"],
+    ["open-bottles"],
   ],
   kitchen: [["kitchen"], ["orders"], ["dashboard"]],
   rooms: [

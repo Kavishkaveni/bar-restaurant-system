@@ -4,12 +4,30 @@ One responsive website that runs a single-outlet bar, restaurant and rooms
 business: billing, liquor and food stock, rooms, purchasing, expenses, reports
 and AI. Staff use it on a counter PC or tablet; the owner uses it on a phone.
 
-Phases 1 to 7 of 8 are done: the foundation (login, staff, roles, settings,
-audit log, layout), inventory and purchasing, the POS, the bar and kitchen
-side (pegs from open bottles, recipes, kitchen screen), rooms, expenses, the
-cash drawer and reports, and the live dashboard.
+All 8 phases are done: the foundation (login, staff, roles, settings, audit
+log, layout), inventory and purchasing, the POS, the bar and kitchen side
+(pegs from open bottles, recipes, kitchen screen), rooms, expenses, the cash
+drawer and reports, the live dashboard, and the AI assistant, daily backups
+and a ready-to-run server setup. **To put it online, follow [DEPLOY.md](DEPLOY.md).**
 
 ## What works now
+
+### AI assistant, backups and going live (phase 8)
+
+- **AI assistant**: ask in plain words ("How much did we sell yesterday?",
+  "What's running low?", "Compare this week with last week"). The AI reads the
+  same figures as Reports through a small set of read-only tools; it never
+  sees the database, can't change anything, and is never sent guest names,
+  phones or ID numbers. Works with free plans (Google Gemini, Groq) or any
+  OpenAI-compatible service; the owner pastes the key in **Settings → AI
+  assistant**. Managers don't get profit figures unless their role allows it.
+- **Backups**: a full `pg_dump` copy every day after 03:00, newest 14 kept;
+  **Back up now** and **Download** in Settings. With several server
+  processes a database lock makes sure only one makes the backup. Restoring
+  is described in DEPLOY.md and covered by a test.
+- **Going live**: `docker-compose.prod.yml` runs PostgreSQL, the API (2
+  processes), the website (production build) and Caddy, which gets free HTTPS
+  for your domain. The database is never exposed to the internet.
 
 ### Dashboard, live updates and app install (phase 7)
 
@@ -191,6 +209,15 @@ echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
 npm install && npm run dev
 ```
 
+### Backups when running without Docker
+
+Backups use PostgreSQL's `pg_dump`. On Windows it's usually not on the PATH, so
+add its full path to `backend/.env`, matching your PostgreSQL version:
+
+```
+PG_DUMP_PATH=C:\Program Files\PostgreSQL\17\bin\pg_dump.exe
+```
+
 ## Tests
 
 ```bash
@@ -198,7 +225,7 @@ docker compose exec api pytest        # with Docker
 cd backend && pytest                  # without Docker
 ```
 
-115 tests cover login, PIN lockout, token refresh, password change, permission
+127 tests cover login, PIN lockout, token refresh, password change, permission
 checks, the last-owner rule, settings, the audit log, items, purchases, average
 cost, cancelling purchases, opening stock, wastage, counts, bill totals,
 payments, stock deduction, voids, manager approvals, split and merge. Tests only ever run
@@ -261,4 +288,4 @@ docker-compose.yml
 | 5 | Rooms, bookings, room bills, housekeeping | Done |
 | 6 | Expenses, shifts, reports | Done |
 | 7 | Admin dashboard with live charts | Done |
-| 8 | AI features, backups, deployment | Next |
+| 8 | AI features, backups, deployment | Done |

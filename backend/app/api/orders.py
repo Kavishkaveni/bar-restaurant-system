@@ -38,7 +38,7 @@ from app.schemas.pos import (
     SplitIn,
     VoidIn,
 )
-from app.services import audit, billing
+from app.services import audit, billing, bottles, stock
 from app.services.pins import Approval, authorize, has_permission
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -332,6 +332,50 @@ async def delete_empty_order(order_id: int, actor: Waiter, db: DB, request: Requ
 
 # ---- Lines -----------------------------------------------------------------------------
 
+async def ensure_bottle_open(db: DB, item: Item, deduct: Decimal, adding: Decimal, open_bottle: bool, actor: User) -> None:
+    """A peg needs enough in the open bottles, counting pegs on unpaid bills.
+    If not, ask first; on yes, open new bottles."""
+    if not item.track_stock or not bottles.pours_from_bottle(item, deduct):
+        return
+    await bottles.fit_to_stock(db, item)
+    waiting = await db.scalar(
+        select(func.coalesce(func.sum(OrderLine.qty * OrderLine.deduct_per_unit), 0))
+        .join(Order, Order.id == OrderLine.order_id)
+        .where(Order.status == "open", OrderLine.item_id == item.id, OrderLine.deduct_per_unit < item.unit_size)
+    )
+    need = Decimal(waiting) + adding
+    have = await bottles.open_ml(db, item.id)
+    sealed = await bottles.sealed_count(db, item)
+    if need <= have or sealed == 0:
+        return
+    if not open_bottle:
+        left = max(have - Decimal(waiting), ZERO)
+        if left > 0:
+            msg = f"Only {stock.format_qty(item, left)} left in the open {item.name} bottle."
+        elif have > 0:
+            msg = f"The open {item.name} bottle is already used up by pegs on bills that aren't paid yet."
+        else:
+            msg = f"No {item.name} bottle is open."
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{msg} Open a new bottle?")
+    while have < need and sealed > 0:
+        await bottles.open_new(db, item, actor, note="Opened from the POS")
+        have += item.unit_size
+        sealed -= 1
+
+async def ensure_in_stock(db: DB, order: Order, item: Item, adding: Decimal) -> None:
+    """Don't sell more than is in stock, counting what's already on this bill."""
+    if item.kind == "build_assembly" or not item.track_stock:
+        return
+    have = (await stock.on_hand(db, [item.id]))[item.id]
+    on_bill = sum((x.qty * x.deduct_per_unit for x in order.lines if x.item_id == item.id), ZERO)
+    if on_bill + adding > have:
+        left = stock.format_qty(item, max(have - on_bill, ZERO))
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Not enough {item.name} in stock: only {left} left. Add the purchase or count the stock first.",
+        )
+
+
 @router.post("/{order_id}/lines", response_model=OrderOut)
 async def add_line(order_id: int, body: LineAdd, actor: Waiter, db: DB):
     order = await load(db, order_id, lock=True)
@@ -350,6 +394,8 @@ async def add_line(order_id: int, body: LineAdd, actor: Waiter, db: DB):
         if item.selling_price is None:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{item.name} has no selling price")
         name, price, deduct = item.name, item.selling_price, item.unit_size
+    await ensure_in_stock(db, order, item, body.qty * deduct)
+    await ensure_bottle_open(db, item, deduct, body.qty * deduct, body.open_bottle, actor)
 
     note = body.note.strip()
     for_kitchen = item.category.module == "food"
@@ -388,6 +434,10 @@ async def update_line(order_id: int, line_id: int, body: LineUpdate, actor: Wait
     ensure_open(order)
     check_taker(actor, order.type)
     line = _line(order, line_id)
+    if body.qty > line.qty:
+        await ensure_in_stock(db, order, line.item, (body.qty - line.qty) * line.deduct_per_unit)
+        await ensure_bottle_open(db, line.item, line.deduct_per_unit, (body.qty - line.qty) * line.deduct_per_unit,
+                                 body.open_bottle, actor)
     if body.qty < line.qty:
         approver = await guard_reduction(db, order, actor, body.approval, request, line)
         audit.record(db, user=actor, action="reduce_line", entity="order", entity_id=order.id,

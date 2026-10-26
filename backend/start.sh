@@ -6,7 +6,8 @@ alembic upgrade head
 python -m app.seed
 
 if [ "$APP_ENV" = "production" ]; then
-  exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers
+  # Behind Caddy: trust its X-Forwarded-* headers so client IPs in the audit log are right.
+  exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips '*'
 else
   exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 fi

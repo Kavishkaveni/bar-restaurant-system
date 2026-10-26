@@ -189,7 +189,7 @@ export type SellOption = {
   sort_order: number;
 };
 
-export type MenuOption = { id: number | null; name: string; price: number };
+export type MenuOption = { id: number | null; name: string; price: number; out_of_stock: boolean };
 export type MenuItem = {
   id: number;
   name: string;

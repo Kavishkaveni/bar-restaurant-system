@@ -208,6 +208,10 @@ async def menu(_: PosUser, db: DB):
             smallest = min([item.unit_size] + [o.deduct_qty for o in by_item.get(item.id, [])])
             display = stock.format_qty(item, qty) if item.track_stock else ""
             out_of_stock = item.track_stock and qty < smallest
+            if item.track_stock:
+                deduct = {o.id: o.deduct_qty for o in by_item.get(item.id, [])}
+                for o in opts:
+                    o.out_of_stock = qty < (item.unit_size if o.id is None else deduct[o.id])
         out.append(
             MenuItem(
                 id=item.id,

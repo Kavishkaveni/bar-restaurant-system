@@ -56,6 +56,10 @@ async def list_open_bottles(_: Annotated[User, Depends(require_any(*STOCK_VIEWER
             .order_by(Category.name, Item.name)
         )
     )
+    # Bring the open bottles in line with the stock if it went down another way.
+    changed = [await bottles.fit_to_stock(db, item) for item in items]
+    if any(changed):
+        await db.commit()
     return await _summary(db, items)
 
 
@@ -64,6 +68,7 @@ async def open_bottle(item_id: int, actor: Bartender, db: DB, request: Request):
     item = await stock.lock_item(db, item_id)
     if not item or not item.is_active or item.base_unit != "ml" or item.unit_size <= 1:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Only bottle-measured items can be opened")
+    await bottles.fit_to_stock(db, item)
     if await bottles.sealed_count(db, item) < 1:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"No sealed bottles of {item.name} left in stock")
     await bottles.open_new(db, item, actor, note="Opened by hand")
@@ -82,6 +87,11 @@ async def finish_bottle(bottle_id: int, body: FinishBottleIn, actor: Bartender, 
     if not bottle or bottle.status != "open":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That bottle isn't open")
     item = await stock.lock_item(db, bottle.item_id)
+    # A bottle the stock no longer covers is closed here, not counted as wastage.
+    await bottles.fit_to_stock(db, item)
+    if bottle.status != "open":
+        await db.commit()
+        return (await _summary(db, [item]))[0]
     unaccounted = bottle.remaining_ml
     if unaccounted > 0:
         stock.add_movement(db, item=item, qty=-unaccounted, type="wastage", user=actor,

@@ -70,6 +70,7 @@ class MenuOption(BaseModel):
     id: int | None  # None = the whole stock unit at the item's selling price
     name: str
     price: Num
+    out_of_stock: bool = False  # not enough stock left for this one
 
 
 class MenuItem(BaseModel):
@@ -117,6 +118,7 @@ class LineAdd(BaseModel):
     option_id: int | None = None
     qty: Decimal = Field(default=Decimal(1), gt=0, max_digits=10, decimal_places=3)
     note: str = Field(default="", max_length=200)
+    open_bottle: bool = False  # yes to "open a new bottle?"
 
 
 class LineUpdate(BaseModel):
@@ -124,6 +126,7 @@ class LineUpdate(BaseModel):
     note: str | None = Field(default=None, max_length=200)
     reason: str = Field(default="", max_length=200)
     approval: Approval | None = None
+    open_bottle: bool = False
 
 
 class LineRemove(BaseModel):

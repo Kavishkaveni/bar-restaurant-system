@@ -157,7 +157,9 @@ async def dashboard(actor: Viewer, db: DB):
     expected = (await drawer.count(db, shift)).expected if shift else None
 
     recent = list(await db.scalars(
-        select(Order).where(Order.status == "paid").order_by(Order.closed_at.desc()).limit(6)
+        select(Order).where(Order.status == "paid").order_by(Order.closed_at.desc().nulls_last()).limit(6)
+        # A bill seen as open earlier in this request may have been paid since: reload it fresh.
+        .execution_options(populate_existing=True)
     ))
 
     money_in = sum((p.amount for p in s.payments), ZERO)
@@ -184,6 +186,6 @@ async def dashboard(actor: Viewer, db: DB):
         low_stock_count=len(low),
         drawer_expected=expected,
         drawer_open_since=shift.opened_at if shift else None,
-        recent=[RecentBill(id=o.id, label=label(o), total=o.total, closed_at=o.closed_at,
+        recent=[RecentBill(id=o.id, label=label(o), total=o.total, closed_at=o.closed_at or o.created_at,
                            methods=sorted({p.method for p in o.payments})) for o in recent],
     )

@@ -12,6 +12,7 @@ import { BillActions } from "@/components/pos/BillActions";
 import { BillPanel } from "@/components/pos/BillPanel";
 import { ItemPicker } from "@/components/pos/ItemPicker";
 import { PayDialog } from "@/components/pos/PayDialog";
+import { useBottlePrompt } from "@/components/pos/OpenBottlePrompt";
 import { useOrder } from "@/components/pos/useOrder";
 import { Badge, Button, ErrorText, Modal, Panel, Spinner, formatDateTime } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -31,6 +32,7 @@ function OrderScreen() {
   const id = Number(useParams<{ id: string }>().id);
   const router = useRouter();
   const { query, order, act, put, busy, error, setError } = useOrder(id);
+  const { withBottle, prompt } = useBottlePrompt();
   const menu = useQuery({ queryKey: ["pos-menu"], queryFn: () => api<Menu>("/pos/menu"), staleTime: 60_000 });
   const money = useMoney();
 
@@ -43,9 +45,15 @@ function OrderScreen() {
   if (order.status !== "open" && !paying) return <ClosedBill order={order} act={act} error={error} />;
 
   const add = (item: MenuItem, option: MenuOption) =>
-    act(() => api<Order>(`/orders/${id}/lines`, { method: "POST", json: { item_id: item.id, option_id: option.id, qty: 1 } }));
+    act(() =>
+      withBottle((open_bottle) =>
+        api<Order>(`/orders/${id}/lines`, { method: "POST", json: { item_id: item.id, option_id: option.id, qty: 1, open_bottle } }),
+      ),
+    );
   const patchLine = (line: OrderLine, qty: number, approval?: Approval, reason?: string) =>
-    api<Order>(`/orders/${id}/lines/${line.id}`, { method: "PATCH", json: { qty, approval, reason: reason ?? "" } });
+    withBottle((open_bottle) =>
+      api<Order>(`/orders/${id}/lines/${line.id}`, { method: "PATCH", json: { qty, approval, reason: reason ?? "", open_bottle } }),
+    );
   const removeLine = (line: OrderLine, approval?: Approval, reason?: string) =>
     api<Order>(`/orders/${id}/lines/${line.id}/remove`, { method: "POST", json: { approval, reason: reason ?? "" } });
 
@@ -117,6 +125,7 @@ function OrderScreen() {
         onDone={() => router.push("/pos")}
       />
       <BillActions order={order} open={more} onClose={() => setMore(false)} act={act} error={error} />
+      {prompt}
     </div>
   );
 }
